@@ -1,0 +1,23 @@
+{
+  "name": "@algobattle/judge",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "start": "node dist/worker.js"
+  },
+  "dependencies": {
+    "vm2": "^3.9.19",
+    "bullmq": "^5.7.8",
+    "ioredis": "^5.4.1",
+    "@algobattle/db": "workspace:*",
+    "@algobattle/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}

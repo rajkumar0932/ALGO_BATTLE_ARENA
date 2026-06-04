@@ -1,0 +1,283 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-primary: #080c18;
+  --bg-secondary: #0d1425;
+  --bg-card: #111827;
+  --bg-card-hover: #151e30;
+  --accent-cyan: #00d4ff;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f97316;
+  --accent-green: #10b981;
+  --accent-gold: #f59e0b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-cyan: rgba(0, 212, 255, 0.25);
+  --border-purple: rgba(139, 92, 246, 0.25);
+  --glow-cyan: 0 0 40px rgba(0, 212, 255, 0.15), 0 0 80px rgba(0, 212, 255, 0.05);
+  --glow-purple: 0 0 40px rgba(139, 92, 246, 0.15), 0 0 80px rgba(139, 92, 246, 0.05);
+  --glow-orange: 0 0 40px rgba(249, 115, 22, 0.15);
+}
+
+/* GLOBAL KEYFRAMES */
+@keyframes float1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.97); }
+}
+@keyframes float2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25px, 15px) scale(1.03); }
+  66% { transform: translate(20px, -30px) scale(0.98); }
+}
+@keyframes float3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-45%, -58%) scale(1.08); }
+}
+@keyframes blobPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(0, 212, 255, 0.2); }
+  50%       { border-color: rgba(0, 212, 255, 0.6); }
+}
+@keyframes typewriterBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes particleDrift {
+  0%   { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+  25%  { transform: translateY(-12px) translateX(6px); opacity: 0.7; }
+  75%  { transform: translateY(8px) translateX(-4px); opacity: 0.5; }
+  100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+}
+
+@keyframes heartbeatGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.9), 0 0 10px rgba(239, 68, 68, 0.5) inset; border-color: rgba(239, 68, 68, 0.9); }
+}
+@keyframes pulseRadial {
+  0%, 100% { opacity: 0.04; transform: scale(1); }
+  50% { opacity: 0.07; transform: scale(1.1); }
+}
+@keyframes shimmerSweep {
+  0% { transform: translateX(-150%); }
+  100% { transform: translateX(150%); }
+}
+
+/* SCROLL REVEAL BASE */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.reveal-right {
+  opacity: 0;
+  transform: translateX(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* GLOBAL NOISE OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* DOT GRID BACKGROUND */
+body {
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--text-primary);
+  font-family: var(--font-inter), sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background-color: var(--bg-primary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #2a2f45;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #3a3f55;
+  }
+}
+
+@layer components {
+  /* Glass card effect */
+  .glass-card {
+    @apply backdrop-blur-xl border border-border rounded-xl;
+    background-color: rgba(17, 24, 39, 0.8);
+  }
+
+  /* Neon glow border on hover */
+  .neon-border {
+    @apply border border-border transition-all duration-300;
+  }
+  .neon-border:hover {
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply px-6 py-3 bg-accent-cyan text-bg-primary font-semibold rounded-lg transition-all duration-200 active:scale-95;
+  }
+  .btn-primary:hover {
+    background-color: rgba(0, 212, 255, 0.9);
+    box-shadow: 0 10px 15px -3px rgba(0, 212, 255, 0.25);
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-6 py-3 bg-bg-secondary text-gray-200 font-semibold rounded-lg transition-all duration-200 border border-border active:scale-95 hover:text-white;
+  }
+  .btn-secondary:hover {
+    background-color: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.2);
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply px-6 py-3 text-accent-rose font-medium rounded-lg transition-all duration-200 active:scale-95 border;
+    background-color: rgba(244, 63, 94, 0.1);
+    border-color: rgba(244, 63, 94, 0.3);
+  }
+  .btn-danger:hover {
+    background-color: rgba(244, 63, 94, 0.2);
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-gray-100 placeholder-gray-500 transition-all duration-200 focus:outline-none;
+  }
+  .input-field:focus {
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.5);
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+  .badge-easy {
+    @apply badge text-accent-emerald border;
+    background-color: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+  .badge-medium {
+    @apply badge text-accent-amber border;
+    background-color: rgba(249, 115, 22, 0.15);
+    border-color: rgba(249, 115, 22, 0.25);
+  }
+  .badge-hard {
+    @apply badge text-accent-rose border;
+    background-color: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.25);
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply glass-card p-6 flex flex-col gap-2;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-bg-hover rounded animate-pulse;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-cyan to-accent-purple bg-clip-text text-transparent;
+  }
+
+  .text-gradient-warm {
+    @apply bg-gradient-to-r from-accent-amber to-accent-rose bg-clip-text text-transparent;
+  }
+}
