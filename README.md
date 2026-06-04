@@ -19,6 +19,12 @@
 
 *Get matched with an opponent, solve the same algorithm problem, and race to submit the best solution. Climb the ELO leaderboard and prove your skills.*
 
+<br/>
+<a href="https://algobattle.vercel.app">
+  <img src="docs/landing.png" alt="AlgoBattle Landing Page" width="100%">
+</a>
+<br/>
+
 [**Live Demo**](https://algobattle.vercel.app) · [**Report a Bug**](https://github.com/rajkumar0932/AlgoBattle/issues) · [**Request a Feature**](https://github.com/rajkumar0932/AlgoBattle/issues)
 
 </div>
@@ -70,6 +76,9 @@ The platform is built around three core experiences:
 ## Features
 
 ### Core Gameplay
+
+<img src="docs/battle-modes.png" alt="Battle Modes" width="100%">
+<br/>
 - **Live 1v1 Ranked Battles** — Real-time WebSocket matchmaking pairs you with a player of similar ELO. Both see the same problem simultaneously.
 - **AI Bot Battles** — Six bot difficulty tiers powered by Groq LLMs. Each tier has human-like solve times, realistic mistake patterns, and appropriate solution quality.
 - **Private Rooms** — Generate shareable 6-character room codes for friend battles. No ELO stakes unless opted in.
@@ -82,6 +91,9 @@ The platform is built around three core experiences:
 - **Structured Test Harness** — Each problem ships with example inputs, constraints, and a complete specification.
 
 ### Ranking & Progression
+
+<img src="docs/dashboard.png" alt="Player Dashboard" width="100%">
+<br/>
 - **True ELO Rating System** — Win/loss adjusts your ELO based on opponent strength. Beating a stronger player gains more; losing to a weaker player costs more.
 - **Global Leaderboard** — Filter by All Time / This Week / Today. Podium display for top 3 players.
 - **Personal Dashboard** — Track ELO Rating, Win count, Loss count, Win Rate %, and full match history.
@@ -456,6 +468,9 @@ docker compose logs -f redis
 
 ### AI Bot System
 
+<img src="docs/ai-bot.png" alt="AI Bot Difficulty Tiers" width="100%">
+<br/>
+
 The AI bot system is powered by the **Groq API** and simulates human-like behavior:
 
 | Tier | ELO | Behavior |
@@ -477,6 +492,9 @@ Each bot tier sends a carefully crafted prompt to Groq specifying: the problem, 
 4. Private room battles can optionally count toward ELO (toggled at room creation).
 
 ### ELO Rating System
+
+<img src="docs/leaderboard.png" alt="Global Leaderboard" width="100%">
+<br/>
 
 AlgoBattle uses the standard **FIDE ELO formula**:
 
