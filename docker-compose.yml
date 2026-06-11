@@ -1,27 +1,2 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: algobattle-postgres
-    restart: unless-stopped
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: algobattle
-      POSTGRES_PASSWORD: algobattle_secret
-      POSTGRES_DB: algobattle
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: algobattle-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redisdata:/data
-
-volumes:
-  pgdata:
-  redisdata:
+# Docker Compose — backend services removed.
+# Add services here if needed in the future.

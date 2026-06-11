@@ -6,10 +6,6 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "db:generate": "turbo db:generate",
-    "db:push": "turbo db:push",
-    "db:seed": "pnpm --filter @algobattle/db db:seed",
-    "db:studio": "pnpm --filter @algobattle/db db:studio",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },

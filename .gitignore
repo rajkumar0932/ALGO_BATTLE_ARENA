@@ -15,8 +15,6 @@ out/
 .env.local
 .env.*.local
 
-# Prisma
-packages/db/prisma/migrations/
 
 # IDE
 .vscode/
