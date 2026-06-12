@@ -137,3 +137,80 @@ PORT=4000
 | What happens if the DB connection fails? | Call `process.exit(1)` — don't run the server without a database. |
 | How do you prevent SQL injection? | Use parameterized queries: `pool.query("SELECT * FROM users WHERE id = $1", [id])` |
 | What is CORS? | Cross-Origin Resource Sharing — browser security that blocks frontend (port 3000) from calling backend (port 4000) unless explicitly allowed. Use the `cors` npm package. |
+
+---
+
+## Q5: Why PostgreSQL over MongoDB?
+
+### The Core Difference
+
+| | PostgreSQL | MongoDB |
+|---|---|---|
+| Type | Relational (SQL) | Document (NoSQL) |
+| Data shape | Tables with fixed schema | JSON-like documents, flexible schema |
+| Relationships | JOINs — foreign keys enforced | Embed or reference manually |
+| Transactions | Full ACID support | ACID since v4.0 (limited) |
+| Query language | SQL (standardised) | MongoDB Query Language |
+| Best for | Structured, relational data | Unstructured, rapidly changing data |
+
+### Why PostgreSQL made sense for AlgoBattle
+
+AlgoBattle has **highly relational data**:
+
+```
+User ──< Battle >── User
+          │
+          └──< Submission >── Problem
+```
+
+- A **User** has many **Battles**
+- A **Battle** has two **Users** and one **Problem**
+- A **Battle** has many **Submissions**
+
+These relationships are natural in SQL — enforced with foreign keys and queried with JOINs. In MongoDB you'd have to manage these references manually with no enforcement.
+
+### 1. Data Integrity
+- PostgreSQL enforces **foreign keys** — you can't create a Battle with a non-existent User ID.
+- MongoDB has no built-in referential integrity — you can have orphaned documents silently.
+
+```sql
+-- PostgreSQL: this will throw an error if user_id doesn't exist
+INSERT INTO battles (player1_id, player2_id) VALUES (999, 888);
+-- ERROR: insert or update on table "battles" violates foreign key constraint
+```
+
+### 2. ACID Transactions
+- When a battle ends, you need to update the winner's rating, loser's rating, and the battle record **atomically** — either all succeed or none do.
+- PostgreSQL guarantees this. MongoDB's multi-document transactions exist but are slower and less mature.
+
+```ts
+// PostgreSQL atomic transaction
+await pool.query("BEGIN");
+await pool.query("UPDATE users SET rating = $1 WHERE id = $2", [newRating, winnerId]);
+await pool.query("UPDATE battles SET status = 'completed' WHERE id = $1", [battleId]);
+await pool.query("COMMIT");
+```
+
+### 3. Complex Queries
+- Leaderboard = rank users by rating with filters. Easy with SQL `ORDER BY`, `WHERE`, `LIMIT`.
+- In MongoDB the same query requires the aggregation pipeline — more verbose and harder to optimise.
+
+```sql
+-- Clean SQL leaderboard
+SELECT username, rating, wins, losses
+FROM users
+ORDER BY rating DESC
+LIMIT 50;
+```
+
+### 4. Schema as Documentation
+- A strict schema means every developer knows exactly what columns exist and their types.
+- MongoDB's flexible schema sounds nice but leads to inconsistent documents in production.
+
+### When MongoDB wins
+- You don't know your data shape yet (prototyping fast).
+- Data is truly document-like with no relationships (e.g. logs, CMS content).
+- You need horizontal sharding at massive scale from day one.
+
+### Interview One-Liner
+> *"PostgreSQL was the right choice because AlgoBattle has strongly relational data — users, battles, and submissions are all connected. SQL gives us enforced foreign keys, ACID transactions for rating updates, and clean JOINs for the leaderboard. MongoDB would have required managing those relationships manually with no safety net."*
