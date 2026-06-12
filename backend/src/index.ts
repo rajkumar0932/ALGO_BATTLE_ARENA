@@ -1,15 +1,21 @@
 import express from "express";
+import { pool } from "./config/db";
 
 const app = express();
 
-app.use(express.json());
+async function start() {
+    try {
+        const result = await pool.query("SELECT NOW()");
 
-app.get("/", (req, res) => {
-    res.send("Backend running...");
-});
+        console.log("Database Connected");
+        console.log(result.rows[0]);
 
-const PORT = process.env.PORT || 4000;
+        app.listen(3000, () => {
+            console.log("Server running on port 3000");
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+start();
