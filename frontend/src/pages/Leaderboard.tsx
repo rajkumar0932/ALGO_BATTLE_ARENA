@@ -1,0 +1,90 @@
+import { useEffect, useState } from "react";
+import { Trophy } from "lucide-react";
+import { LeaderboardClient } from "@/components/leaderboard/LeaderboardClient";
+import { useAuth } from "@/lib/auth";
+
+interface LeaderboardUser {
+  id: string;
+  username: string;
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+const MOCK_USERS: LeaderboardUser[] = [
+  { id: "1", username: "CodeWarrior", rating: 2100, wins: 45, losses: 12, draws: 3 },
+  { id: "2", username: "AlgoMaster", rating: 1950, wins: 38, losses: 15, draws: 7 },
+  { id: "3", username: "ByteSlayer", rating: 1820, wins: 30, losses: 18, draws: 2 },
+  { id: "4", username: "NullPointer", rating: 1700, wins: 25, losses: 20, draws: 5 },
+  { id: "5", username: "RecursionKing", rating: 1650, wins: 22, losses: 22, draws: 6 },
+];
+
+export default function Leaderboard() {
+  const { user } = useAuth();
+  const [users, setUsers] = useState<LeaderboardUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/leaderboard`)
+      .then((r) => r.json())
+      .then((data) => {
+        setUsers(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setUsers(MOCK_USERS);
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <div
+      className="relative overflow-hidden min-h-[calc(100vh-64px)] bg-[#0a0f1e]"
+      style={{ backgroundImage: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(251,191,36,0.06) 0%, transparent 70%)" }}
+    >
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-20">
+        <div className="text-center mb-12">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 relative"
+            style={{
+              background: "linear-gradient(135deg, #f97316, #f59e0b)",
+              boxShadow: "0 0 40px rgba(251,191,36,0.4), 0 0 80px rgba(251,191,36,0.15)",
+              animation: "float 4s ease-in-out infinite",
+            }}
+          >
+            <Trophy className="w-8 h-8 text-white relative z-10" />
+          </div>
+          <h1 className="text-4xl md:text-5xl mb-4 flex justify-center gap-3">
+            <span style={{ color: "white", fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700 }}>Global</span>
+            <span
+              style={{
+                background: "linear-gradient(to right, #f97316, #fbbf24)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 0 15px rgba(251,191,36,0.5))",
+                fontFamily: "'Chakra Petch', sans-serif",
+                fontWeight: 700,
+              }}
+            >
+              Leaderboard
+            </span>
+          </h1>
+          <p className="text-gray-400 max-w-xl mx-auto text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            The most elite competitive coders on the platform, ranked by their true ELO rating.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-16 skeleton rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <LeaderboardClient users={users} currentUserId={user?.id} />
+        )}
+      </div>
+    </div>
+  );
+}
