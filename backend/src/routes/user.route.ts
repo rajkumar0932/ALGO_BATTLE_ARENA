@@ -4,6 +4,7 @@ import { upload } from '../middleware/multer';
 import { registerUser, loginUser, logout, regenerateAccessToken, changePassword, displayUser, updateAvtar, updateProfileInfo, getUserprofile, getMatchHistory } from '../controller/user.controller';
 import { AuthMiddleware } from '../middleware/Auth.middleware';
 const userRouter = Router();
+
 userRouter.route('/ping').get((req, res) => res.send('pong'));
 userRouter.route('/register').post(
     (req, res, next) => {

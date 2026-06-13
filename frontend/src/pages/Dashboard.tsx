@@ -11,6 +11,7 @@ interface UserData {
   wins: number;
   losses: number;
   draws: number;
+  avatar_url?: string;
   submissions: Array<{
     id: string;
     verdict: string;
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -38,14 +40,25 @@ export default function Dashboard() {
     }
     if (status === "authenticated" && user) {
       // Fetch user data from your API
-      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/users/${user.id}/dashboard`, {
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/${user.username}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("algobattle_token")}`,
         },
       })
         .then((r) => r.json())
         .then((data) => {
-          setUserData(data);
+          if (data.success && data.data) {
+             setUserData({
+                id: data.data.id,
+                username: data.data.name,
+                rating: data.data.elo_rating ?? 1200,
+                wins: data.data.match_won ?? 0,
+                losses: (data.data.battle_played ?? 0) - (data.data.match_won ?? 0),
+                draws: 0,
+                avatar_url: data.data.avatar_url,
+                submissions: [] // Using empty array since matchHistory is a separate endpoint
+             });
+          }
           setLoading(false);
         })
         .catch(() => {
@@ -63,6 +76,35 @@ export default function Dashboard() {
         });
     }
   }, [status, user, navigate]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/updateAvatar`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("algobattle_token")}`,
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUserData((prev) => prev ? { ...prev, avatar_url: data.data.avatar_url } : null);
+      } else {
+        alert(data.message || "Failed to update avatar");
+      }
+    } catch (err) {
+      alert("An error occurred while uploading the avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   if (status === "loading" || loading) {
     return (
@@ -89,17 +131,42 @@ export default function Dashboard() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Header */}
-        <div className="mb-10 relative">
-          <h1
-            className="text-3xl font-bold mb-2 text-white flex items-center gap-2"
-            style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 400 }}
-          >
-            Welcome back,{" "}
-            <span style={{ color: "#00e5ff", textShadow: "0 0 20px rgba(0,229,255,0.5)", fontWeight: 700 }}>
-              {userData.username}
-            </span>
-          </h1>
-          <p className="text-gray-400 font-mono text-sm">Here's your battle performance overview.</p>
+        <div className="mb-10 relative flex items-center gap-6">
+          <div className="relative group rounded-full overflow-hidden w-24 h-24 shrink-0" style={{ border: "2px solid rgba(0,229,255,0.3)", background: "rgba(0,229,255,0.05)" }}>
+             {userData.avatar_url ? (
+               <img src={userData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+             ) : (
+               <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-accent-cyan">
+                 {userData.username.charAt(0).toUpperCase()}
+               </div>
+             )}
+             <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+               {uploadingAvatar ? (
+                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+               ) : (
+                 <>
+                   <svg className="w-6 h-6 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                   </svg>
+                   <span className="text-[10px] text-white font-medium uppercase tracking-wider">Change</span>
+                 </>
+               )}
+               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={uploadingAvatar} />
+             </label>
+          </div>
+          <div>
+            <h1
+              className="text-3xl font-bold mb-2 text-white flex items-center gap-2"
+              style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 400 }}
+            >
+              Welcome back,{" "}
+              <span style={{ color: "#00e5ff", textShadow: "0 0 20px rgba(0,229,255,0.5)", fontWeight: 700 }}>
+                {userData.username}
+              </span>
+            </h1>
+            <p className="text-gray-400 font-mono text-sm">Here's your battle performance overview.</p>
+          </div>
         </div>
 
         {/* Stats Grid */}

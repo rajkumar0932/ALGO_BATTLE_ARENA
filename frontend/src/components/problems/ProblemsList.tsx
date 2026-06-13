@@ -13,18 +13,25 @@ type Problem = {
   _count: { testCases: number };
 };
 
-export function ProblemsList({ problems }: { problems: Problem[] }) {
-  const [filter, setFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
-  const [search, setSearch] = useState("");
+export function ProblemsList({ 
+  problems,
+  loading,
+  filter,
+  setFilter,
+  search,
+  setSearch
+}: { 
+  problems: Problem[];
+  loading: boolean;
+  filter: "ALL" | "EASY" | "MEDIUM" | "HARD";
+  setFilter: (f: "ALL" | "EASY" | "MEDIUM" | "HARD") => void;
+  search: string;
+  setSearch: (s: string) => void;
+}) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const filteredProblems = useMemo(() => {
-    return problems.filter((p) => {
-      const matchesFilter = filter === "ALL" || p.difficulty === filter;
-      const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [problems, filter, search]);
+  // Since filtering is now server-side, we just map the raw props
+  const filteredProblems = problems;
 
   const stats = useMemo(() => {
     return {

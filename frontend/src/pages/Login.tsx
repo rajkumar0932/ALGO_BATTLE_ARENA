@@ -81,6 +81,14 @@ export default function Login() {
                   autoComplete="current-password"
                 />
               </div>
+              <div className="flex justify-end mt-1.5">
+                <Link
+                  to="/change-password"
+                  className="text-xs text-gray-500 hover:text-accent-cyan transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
             </div>
 
             <button

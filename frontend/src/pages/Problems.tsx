@@ -22,24 +22,48 @@ const MOCK_PROBLEMS: Problem[] = [
 export default function Problems() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filter, setFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
+  const [search, setSearch] = useState("");
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1); // Reset to page 1 on new search
+      fetchProblems();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, filter]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/problems`)
+    fetchProblems();
+  }, [page]);
+
+  const fetchProblems = () => {
+    setLoading(true);
+    
+    // Build query params
+    const params = new URLSearchParams({ page: page.toString() });
+    if (filter !== "ALL") params.append("difficulty", filter);
+    if (search) params.append("search", search);
+
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/problems?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
-        setProblems(data);
+        if (data.success && data.data) {
+          setProblems(data.data.problems);
+          setTotalPages(data.data.pagination.totalPages || 1);
+        } else {
+          setProblems(MOCK_PROBLEMS);
+        }
         setLoading(false);
       })
       .catch(() => {
         setProblems(MOCK_PROBLEMS);
         setLoading(false);
       });
-  }, []);
-
-  const difficultyOrder = { EASY: 0, MEDIUM: 1, HARD: 2 };
-  const sorted = [...problems].sort(
-    (a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
-  );
+  };
 
   const totalTestCases = problems.reduce((a, p) => a + p._count.testCases, 0);
 
@@ -58,21 +82,45 @@ export default function Problems() {
           </h1>
           <div style={{ borderLeft: "2px solid rgba(0,229,255,0.3)", paddingLeft: "12px" }}>
             <p className="text-gray-400 text-lg max-w-2xl font-mono text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              {loading
+              {loading && problems.length === 0
                 ? "[LOADING PROBLEMS...]"
                 : `[CLASSIFIED] Master these algorithms to dominate in ranked battles. Solutions are judged against ${totalTestCases} total test cases.`}
             </p>
           </div>
         </div>
 
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 skeleton rounded-xl" />
-            ))}
+        <ProblemsList 
+          problems={problems} 
+          loading={loading}
+          filter={filter}
+          setFilter={setFilter}
+          search={search}
+          setSearch={setSearch}
+        />
+
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
+              style={{ fontFamily: "'Chakra Petch', sans-serif" }}
+            >
+              PREV
+            </button>
+            <span className="text-gray-400 font-mono text-sm">
+              Page {page} of {totalPages}
+            </span>
+            <button 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
+              style={{ fontFamily: "'Chakra Petch', sans-serif" }}
+            >
+              NEXT
+            </button>
           </div>
-        ) : (
-          <ProblemsList problems={sorted} />
         )}
       </div>
     </div>

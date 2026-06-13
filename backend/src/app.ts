@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
-import userRouter from './routes/user.route'
+import userRouter from './routes/user.route';
+import leaderboardRouter from './routes/leaderboard.route';
+import problemRouter from './routes/problem.route';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
@@ -19,6 +21,8 @@ app.use(cookieParser());
 
 // router be here
 app.use('/user', userRouter)
+app.use('/leaderboard', leaderboardRouter)
+app.use('/problems', problemRouter)
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

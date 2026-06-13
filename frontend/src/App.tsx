@@ -12,6 +12,7 @@ import Battle from "@/pages/Battle";
 import BattleRoomPage from "@/pages/BattleRoom";
 import Leaderboard from "@/pages/Leaderboard";
 import Play from "@/pages/Play";
+import ChangePassword from "@/pages/ChangePassword";
 import NotFound from "@/pages/NotFound";
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/problems" element={<Problems />} />

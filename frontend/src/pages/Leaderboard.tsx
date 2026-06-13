@@ -24,19 +24,25 @@ export default function Leaderboard() {
   const { user } = useAuth();
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all-time' | 'this-week' | 'today'>('all-time');
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/leaderboard`)
+    setLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/leaderboard?filter=${filter}`)
       .then((r) => r.json())
       .then((data) => {
-        setUsers(data);
+        if (data.success && data.data) {
+          setUsers(data.data);
+        } else {
+          setUsers(MOCK_USERS);
+        }
         setLoading(false);
       })
       .catch(() => {
         setUsers(MOCK_USERS);
         setLoading(false);
       });
-  }, []);
+  }, [filter]);
 
   return (
     <div
@@ -70,9 +76,26 @@ export default function Leaderboard() {
               Leaderboard
             </span>
           </h1>
-          <p className="text-gray-400 max-w-xl mx-auto text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-gray-400 max-w-xl mx-auto text-sm mb-8" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             The most elite competitive coders on the platform, ranked by their true ELO rating.
           </p>
+
+          <div className="flex justify-center gap-4 mb-12">
+            {(['all-time', 'this-week', 'today'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 capitalize ${
+                  filter === f
+                    ? "bg-accent-amber/10 border border-accent-amber/50 text-accent-amber shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+                    : "bg-transparent border border-white/5 text-gray-400 hover:text-white hover:border-white/20"
+                }`}
+                style={{ fontFamily: "'Chakra Petch', sans-serif" }}
+              >
+                {f.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
