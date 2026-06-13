@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+*.log
+
+# Test files created by agent
+test_api.js
+test_api.cjs
+d.jpg
+dummy_avatar.jpg
+
+.DS_Store

@@ -1,7 +1,7 @@
-import express from "express";
 import { pool } from "./config/db";
+import app from "./app";
 
-const app = express();
+
 
 async function start() {
     try {
@@ -10,8 +10,8 @@ async function start() {
         console.log("Database Connected");
         console.log(result.rows[0]);
 
-        app.listen(3000, () => {
-            console.log("Server running on port 3000");
+        app.listen(4000, () => {
+            console.log(`Server running on port 4000`);
         });
     } catch (err) {
         console.error(err);
@@ -19,3 +19,4 @@ async function start() {
 }
 
 start();
+// Trigger restart

@@ -214,3 +214,92 @@ LIMIT 50;
 
 ### Interview One-Liner
 > *"PostgreSQL was the right choice because AlgoBattle has strongly relational data — users, battles, and submissions are all connected. SQL gives us enforced foreign keys, ACID transactions for rating updates, and clean JOINs for the leaderboard. MongoDB would have required managing those relationships manually with no safety net."*
+
+---
+
+## Q6: Why do we store the Refresh Token in the database, but not the Access Token?
+
+### The Core Difference
+
+- **Access Token:** Short-lived (e.g., 15 minutes), stateless, and self-verifiable (via JWT signature).
+- **Refresh Token:** Long-lived (e.g., 7 days), stateful, and used to get new Access Tokens.
+
+### Why store the Refresh Token in the database?
+1. **Validation & Tracking:** We need to know if a specific refresh token is still valid, who it belongs to, and from which device they logged in.
+2. **Revocation (Logging out):** If a user logs out, or if their account is compromised, we can simply delete or invalidate the refresh token in the database. Without this, the token would remain valid until it expires.
+3. **Rotation (Security):** When a refresh token is used to get a new access token, we can issue a *new* refresh token and invalidate the old one (Refresh Token Rotation). This prevents replay attacks if a token is stolen.
+
+### Why NOT store the Access Token?
+1. **Performance:** Access tokens are checked on *every single request* to protected routes. If we checked the database every time, it would bottleneck the server.
+2. **Self-Verifiable:** Because it is a signed JWT, the server can verify it mathematically (using the `ACCESS_TOKEN_SECRET`) without needing a database lookup. By keeping it short-lived, the security risk of it being stolen is minimized.
+
+### Interview One-Liner
+> *"We store the refresh token in the database because we need to be able to revoke it, track it, and rotate it for security. We don't store the access token because it's designed to be stateless and self-verifiable to ensure high performance on every API request."*
+
+---
+
+## Q7: What is a Timing Attack and how did you prevent it?
+
+### What is a Timing Attack?
+
+A timing attack is a type of **side-channel attack** where an attacker measures how long the server takes to respond to a request, and uses that information to extract sensitive data.
+
+### The Vulnerability in Login
+
+Consider a naive login flow:
+
+```ts
+// ❌ VULNERABLE — different response times reveal information
+const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+if (!user.rows[0]) {
+    throw new ApiError(400, "User not found");  // ⚡ Fast: ~50ms (no bcrypt)
+}
+
+const valid = await bcrypt.compare(password, user.rows[0].password);
+
+if (!valid) {
+    throw new ApiError(400, "Invalid credentials"); // 🐢 Slow: ~250ms (bcrypt ran)
+}
+```
+
+The problem:
+| Scenario | Time | What attacker learns |
+|---|---|---|
+| Email doesn't exist | ~50ms (fast) | ✅ "This email is NOT registered" |
+| Email exists, wrong password | ~250ms (slow) | ✅ "This email IS registered!" |
+
+An attacker sends thousands of requests with different emails and measures response times. The slow ones reveal **valid accounts** — which can then be targeted with brute-force password attacks.
+
+### The Fix: Always Run bcrypt
+
+```ts
+// ✅ SAFE — constant time regardless of user existence
+const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+const DUMMY_HASH = "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+const valid = await bcrypt.compare(
+    password,
+    user.rows[0]?.password || DUMMY_HASH  // Always runs bcrypt!
+);
+
+if (!user.rows[0] || !valid) {
+    throw new ApiError(400, "Invalid credentials"); // Same message for both cases
+}
+```
+
+Now both paths take the same ~250ms because `bcrypt.compare()` runs regardless.
+
+### Three Rules for Timing-Safe Authentication
+
+1. **Always run the expensive operation** — compare against a dummy hash if the user doesn't exist.
+2. **Use the same error message** — `"Invalid credentials"` for both wrong email AND wrong password, so the attacker can't distinguish.
+3. **Use constant-time comparison** — `bcrypt.compare()` is already constant-time internally, but for raw string comparisons use `crypto.timingSafeEqual()`.
+
+### Where Else Timing Attacks Apply
+- **API key validation** — don't short-circuit on the first wrong character.
+- **Token comparison** — comparing refresh tokens should use `crypto.timingSafeEqual()`.
+- **OTP verification** — same principle: always compare the full code.
+
+### Interview One-Liner
+> *"In our login flow, I always run bcrypt.compare() even when the user doesn't exist, using a dummy hash. This ensures the response time is identical whether the email is valid or not, preventing attackers from enumerating accounts through timing differences."*
