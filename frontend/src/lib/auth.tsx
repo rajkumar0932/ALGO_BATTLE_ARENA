@@ -32,27 +32,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/login`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
+          credentials: "include", // send/receive cookies
         }
       );
       const data = await res.json();
       if (!res.ok) {
-        return { error: data.error || "Invalid credentials" };
+        return { error: data.message || "Invalid credentials" };
       }
+
+      // Save token from data.data.accessToken
+      const token = data.data?.accessToken;
+      if (token) {
+        localStorage.setItem("algobattle_token", token);
+      }
+
+      // Fetch user info using the cookie set by login
+      const userRes = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/displayUser`,
+        {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      const userData = await userRes.json();
+      const u = userData.data;
+
       const loggedInUser: AuthUser = {
-        id: data.user.id,
-        email: data.user.email,
-        username: data.user.username,
-        rating: data.user.rating,
+        id: u?.id || "",
+        email: u?.email || email,
+        username: u?.name || u?.username || "",
+        rating: u?.rating || 0,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser));
-      if (data.token) {
-        localStorage.setItem("algobattle_token", data.token);
-      }
       setUser(loggedInUser);
       setStatus("authenticated");
       return {};

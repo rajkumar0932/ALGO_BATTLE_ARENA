@@ -8,6 +8,8 @@ export interface Match {
     winner_id: number | null;
 
     elo_change: number;
+    problem_id: string;
+    duration: number;
 
     played_at: Date;
 }

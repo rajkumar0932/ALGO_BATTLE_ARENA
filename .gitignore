@@ -36,3 +36,19 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# Uploads (temp files for Cloudinary)
+uploads/
+Backend/uploads/
+backend/uploads/
+
+# Debug logs
+token_error_log.txt
+Backend/token_error_log.txt
+backend/token_error_log.txt
+
+# Temp debug scripts
+Backend/check_schema.js
+Backend/check_users.js
+backend/check_schema.js
+backend/check_users.js

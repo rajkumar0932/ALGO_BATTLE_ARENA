@@ -1,9 +1,10 @@
 import asyncHandler from "../util/asynchronous";
 import jwt from 'jsonwebtoken';
-import { user } from '../dbmodel/user.model';
+import { user } from '../dbmodel/users.model';
 import { ApiError } from "../util/customerror";
 import { Request, Response, NextFunction } from "express";
 import { pool } from "../config/db";
+import { ApiResponse } from "../util/customresponse";
 
 export const AuthMiddleware = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -20,24 +21,21 @@ export const AuthMiddleware = asyncHandler(async (req: Request, res: Response, n
     SELECT
         id,
         name,
-        email,
-        created_at
+        email
     FROM users
     WHERE id = $1
     `,
-            [(decodedToken as any)._id as number]
+            [(decodedToken as any).id as number] // FIXED _id to id
         );
 
         const user = result.rows[0];
-        console.log("decoded token", decodedToken);
+        // console.log("decoded token", decodedToken);
         if (!user) {
             throw new ApiError(401, "Wrong Access token")
-
         }
         (req as any).user = user;
         next();
     } catch (error) {
-        throw new ApiError(401, (error as any)?.message || "Invalid access token")
-
+        throw new ApiError(401, "Invalid access token auth")
     }
-})
+});

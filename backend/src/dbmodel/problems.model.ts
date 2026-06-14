@@ -6,6 +6,7 @@ export interface Problem {
     difficulty: Difficulty;
 
     statement: string;
+    Action: submissionVerdict;
 
     created_at: Date;
 }
@@ -14,5 +15,7 @@ export type Difficulty =
     | "Medium"
 
     | "hard"
-
+export type submissionVerdict =
+    | "solve"
+    | "solved"
 

@@ -3,7 +3,7 @@ import { ApiError } from '../util/customerror';
 import { ApiResponse } from '../util/customresponse';
 import { uploadOnCloudinary } from '../util/cloudinary';
 import { pool } from '../config/db';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
 // ──────────────────────────────────────────────
@@ -25,13 +25,16 @@ const generateAccessAndRefreshToken = async (userId: number) => {
         );
 
         // Store the refresh token in the database
+        const hashed_refresh_token = await bcrypt.hash(refreshToken, 10);
         await pool.query(
             `UPDATE users SET refresh_token = $1 WHERE id = $2`,
-            [refreshToken, userId]
+            [hashed_refresh_token, userId]
         );
 
         return { accessToken, refreshToken };
     } catch (error) {
+        console.error("Token Generation Error:", error);
+
         throw new ApiError(500, "Something went wrong while generating tokens");
     }
 };
@@ -41,10 +44,11 @@ const generateAccessAndRefreshToken = async (userId: number) => {
 // ──────────────────────────────────────────────
 const registerUser = asynchr(async (req: any, res: any) => {
     const { username, email, fullname, password } = req.body;
+    const displayName = fullname?.trim() || username; // fullname is optional, fall back to username
 
     // checking if no field is vacant
-    if ([username, email, fullname, password].some((item: string) => item?.trim() === "")) {
-        throw new ApiError(400, "All fields are compulsory");
+    if ([username, email, password].some((item: string) => !item?.trim())) {
+        throw new ApiError(400, "Username, email and password are required");
     }
 
     // check for existing email or username
@@ -57,40 +61,58 @@ const registerUser = asynchr(async (req: any, res: any) => {
         throw new ApiError(400, "User already exists");
     }
 
-    // get location of image stored locally through multer middleware
+    //upload avatar to cloudinary (optional)
+    let avatarUrl = null;
     const avatarLocalPath = req.files?.avatar?.[0]?.path;
-
-    if (!avatarLocalPath) {
-        throw new ApiError(400, "Avatar is compulsory");
-    }
-
-    // upload to cloudinary
-    const uploadAvatarCloudinary = await uploadOnCloudinary(avatarLocalPath);
-
-    if (!uploadAvatarCloudinary) {
-        throw new ApiError(500, "Unable to upload avatar to cloudinary");
+    if (avatarLocalPath) {
+        const uploadAvatarCloudinary = await uploadOnCloudinary(avatarLocalPath);
+        if (uploadAvatarCloudinary) {
+            avatarUrl = uploadAvatarCloudinary.url;
+        }
     }
 
     // Hash the password before storing
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert the new user into PostgreSQL
-    const insertResult = await pool.query(
-        `INSERT INTO users (name, email, password, avatar_url)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, name, email, avatar_url, created_at`,
-        [username, email, hashedPassword, uploadAvatarCloudinary.url]
-    );
+    const client = await pool.connect();
 
-    const createdUser = insertResult.rows[0];
+    try {
+        await client.query("BEGIN");
 
-    if (!createdUser) {
-        throw new ApiError(500, "Unable to create user in database");
+        // 1. Insert into users
+        const userResult = await client.query(
+            `
+        INSERT INTO users (name, email, password)
+        VALUES ($1, $2, $3)
+        RETURNING id, name, email
+        `,
+            [username, email, hashedPassword]
+        );
+
+        const userId = userResult.rows[0].id;
+
+        // 2. Insert into user_profiles
+        await client.query(
+            `
+        INSERT INTO user_profiles 
+        (user_id, bio, elo_rating, battle_played, match_won, history, avatar_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `,
+            [userId, "", 1000, 0, 0, "{}", avatarUrl]
+        );
+
+        await client.query("COMMIT");
+
+        return res.status(201).json(
+            new ApiResponse(201, userResult.rows[0], "User registered successfully")
+        );
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
     }
-
-    return res.status(201).json(
-        new ApiResponse(201, createdUser, "User registered successfully")
-    );
 });
 
 // ──────────────────────────────────────────────
@@ -138,6 +160,7 @@ const loginUser = asynchr(async (req: any, res: any) => {
         secure: true
     };
 
+
     return res
         .status(200)
         .cookie("accessToken", accessToken, options)
@@ -158,8 +181,8 @@ const logout = asynchr(async (req: any, res: any) => {
     );
 
     const options = {
-        httpOnly: true,
-        secure: true
+        httpOnly: true, //  prevent java script to access the cookie
+        secure: true // cookies will only be send from http
     };
 
     return res
@@ -181,8 +204,18 @@ const regenerateAccessToken = asynchr(async (req: any, res: any) => {
 
     // Verify the refresh token
     const decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET as string) as any;
-
+    // verify refresh token in postgresql
+    const getRefreshToken = await pool.query(
+        `SELECT refresh_token FROM users WHERE id=$1`,
+        [decoded.id]
+    );
+    const checkDatabase = await bcrypt.compare(incomingRefreshToken, getRefreshToken.rows[0].refresh_token);
     // Find the user in PostgreSQL
+    if (!checkDatabase) {
+        throw new ApiError(401, getRefreshToken.rows[0].refresh_token);
+
+    }
+
     const userResult = await pool.query(
         `SELECT id, refresh_token FROM users WHERE id = $1`,
         [decoded.id]
@@ -194,10 +227,8 @@ const regenerateAccessToken = asynchr(async (req: any, res: any) => {
         throw new ApiError(400, "Invalid refresh token");
     }
 
-    // Check if the refresh token matches the one stored in DB
-    if (foundUser.refresh_token !== incomingRefreshToken) {
-        throw new ApiError(400, "Refresh token is expired or has been used");
-    }
+
+
 
     // Generate new tokens (this also rotates the refresh token in DB)
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(foundUser.id);
@@ -215,33 +246,27 @@ const regenerateAccessToken = asynchr(async (req: any, res: any) => {
 });
 
 // ──────────────────────────────────────────────
-// POST /changePassword
+// POST /forgetPassword
 // ──────────────────────────────────────────────
-const changePassword = asynchr(async (req: any, res: any) => {
-    const { oldPassword, newPassword } = req.body;
+const forgetPassword = asynchr(async (req: any, res: any) => {
+    const { email, newPassword } = req.body;
 
-    if (!oldPassword || !newPassword) {
-        throw new ApiError(400, "Both old and new password required");
+    if (!email) {
+        throw new ApiError(400, "please enter the email");
     }
 
     // Get the user's current password hash from PostgreSQL
     const userResult = await pool.query(
-        `SELECT id, password FROM users WHERE id = $1`,
-        [req.user.id]
+        `SELECT id, password FROM users WHERE email = $1`,
+        [email]
     );
 
     const foundUser = userResult.rows[0];
 
     if (!foundUser) {
-        throw new ApiError(404, "User not found");
+        throw new ApiError(404, "email not found... ");
     }
 
-    // Verify old password using bcrypt
-    const isMatch = await bcrypt.compare(oldPassword, foundUser.password);
-
-    if (!isMatch) {
-        throw new ApiError(400, "Enter correct password");
-    }
 
     // Hash new password and update in PostgreSQL
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
@@ -257,47 +282,47 @@ const changePassword = asynchr(async (req: any, res: any) => {
 // ──────────────────────────────────────────────
 // GET /displayUser
 // ──────────────────────────────────────────────
-const displayUser = asynchr(async (req: any, res: any) => {
-    return res.status(200).json(new ApiResponse(200, req.user, "User profile sent"));
-});
+// const displayUser = asynchr(async (req: any, res: any) => {
+//     return res.status(200).json(new ApiResponse(200, req.user, "User profile sent"));
+// });
 
 // ──────────────────────────────────────────────
 // PATCH /updateAvatar
 // ──────────────────────────────────────────────
-const updateAvtar = asynchr(async (req: any, res: any) => {
-    const avatarFile = req.files?.avatar?.[0];
+// const updateAvtar = asynchr(async (req: any, res: any) => {
+//     const avatarFile = req.files?.avatar?.[0];
 
-    if (!avatarFile) {
-        throw new ApiError(400, "Avatar file is required");
-    }
+//     if (!avatarFile) {
+//         throw new ApiError(400, "Avatar file is required");
+//     }
 
-    // Upload to cloudinary
-    const uploaded = await uploadOnCloudinary(avatarFile.path);
+//     // Upload to cloudinary
+//     const uploaded = await uploadOnCloudinary(avatarFile.path);
 
-    if (!uploaded) {
-        throw new ApiError(500, "Unable to upload avatar to cloudinary");
-    }
+//     if (!uploaded) {
+//         throw new ApiError(500, "Unable to upload avatar to cloudinary");
+//     }
 
-    // Update the avatar_url in user_profiles table (avatar belongs to profile, not user)
-    const updateResult = await pool.query(
-        `UPDATE user_profiles SET avatar_url = $1 WHERE user_id = $2
-         RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
-        [uploaded.url, req.user.id]
-    );
+//     // Update the avatar_url in user_profiles table (avatar belongs to profile, not user)
+//     const updateResult = await pool.query(
+//         `UPDATE user_profiles SET avatar_url = $1 WHERE user_id = $2
+//          RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
+//         [uploaded.url, req.user.id]
+//     );
 
-    // If no profile row exists yet, insert one
-    if (updateResult.rowCount === 0) {
-        const insertResult = await pool.query(
-            `INSERT INTO user_profiles (user_id, avatar_url)
-             VALUES ($1, $2)
-             RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
-            [req.user.id, uploaded.url]
-        );
-        return res.status(200).json(new ApiResponse(200, insertResult.rows[0], "Avatar updated successfully"));
-    }
+//     // If no profile row exists yet, insert one
+//     if (updateResult.rowCount === 0) {
+//         const insertResult = await pool.query(
+//             `INSERT INTO user_profiles (user_id, avatar_url)
+//              VALUES ($1, $2)
+//              RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
+//             [req.user.id, uploaded.url]
+//         );
+//         return res.status(200).json(new ApiResponse(200, insertResult.rows[0], "Avatar updated successfully"));
+//     }
 
-    return res.status(200).json(new ApiResponse(200, updateResult.rows[0], "Avatar updated successfully"));
-});
+//     return res.status(200).json(new ApiResponse(200, updateResult.rows[0], "Avatar updated successfully"));
+// });
 
 // ──────────────────────────────────────────────
 // PATCH /updateProfile
@@ -305,7 +330,9 @@ const updateAvtar = asynchr(async (req: any, res: any) => {
 // Updates profile fields (bio, avatar_url) — NOT email or username.
 // ──────────────────────────────────────────────
 const updateProfileInfo = asynchr(async (req: any, res: any) => {
-    const { bio, avatar_url } = req.body;
+    const { bio } = req.body;
+    let avatar_url = null;
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
 
     // At least one field must be provided
     if (bio === undefined && avatar_url === undefined) {
@@ -318,15 +345,15 @@ const updateProfileInfo = asynchr(async (req: any, res: any) => {
          SET bio = COALESCE($1, bio),
              avatar_url = COALESCE($2, avatar_url)
          WHERE user_id = $3
-         RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
+        `,
         [bio || null, avatar_url || null, req.user.id]
     );
 
     // Step 2: If no profile row exists yet, create one
     if (updateResult.rowCount === 0) {
         const insertResult = await pool.query(
-            `INSERT INTO user_profiles (user_id, bio, avatar_url)
-             VALUES ($1, $2, $3)
+            `INSERT INTO user_profiles (user_id, bio, avatar_url, elo_rating, battle_played, match_won)
+             VALUES ($1, $2, $3, 1200, 0, 0)
              RETURNING user_id, bio, elo_rating, battle_played, match_won, avatar_url`,
             [req.user.id, bio || null, avatar_url || null]
         );
@@ -348,7 +375,7 @@ const getUserprofile = asynchr(async (req: any, res: any) => {
 
     // Join users with user_profiles in PostgreSQL
     const profileResult = await pool.query(
-        `SELECT u.id, u.name, u.email, u.created_at,
+        `SELECT u.id, u.name, u.email ,
                 p.bio, p.elo_rating, p.battle_played, p.match_won, p.avatar_url
          FROM users u
          LEFT JOIN user_profiles p ON u.id = p.user_id
@@ -373,13 +400,13 @@ const getMatchHistory = asynchr(async (req: any, res: any) => {
 
     // Query match history from PostgreSQL with a JOIN on problems
     const historyResult = await pool.query(
-        `SELECT m.id, m.player1_id, m.player2_id, m.winner_id, m.status, m.created_at,
+        `SELECT m.id, m.player1_id, m.player2_id, m.winner_id, m.played_at,
                 p.title AS problem_title
          FROM matches m
          LEFT JOIN problems p ON m.problem_id = p.id
          WHERE m.player1_id = $1 OR m.player2_id = $1
-         ORDER BY m.created_at DESC
-         LIMIT 50`,
+         ORDER BY m.played_at DESC
+         LIMIT 10`,
         [userId]
     );
 
@@ -388,60 +415,14 @@ const getMatchHistory = asynchr(async (req: any, res: any) => {
     );
 });
 
-// ──────────────────────────────────────────────
-// GET /leaderboard — fetch top players
-// ──────────────────────────────────────────────
-const getLeaderboard = asynchr(async (req: any, res: any) => {
-    const filter = req.query.filter || 'all-time'; // 'all-time', 'this-week', 'today'
-
-    let leaderboardResult;
-
-    if (filter === 'this-week' || filter === 'today') {
-        const interval = filter === 'this-week' ? '7 days' : '1 day';
-
-        // For time-based filters, we calculate stats based on matches in that timeframe
-        // and order by whoever won the most matches recently.
-        leaderboardResult = await pool.query(
-            `SELECT u.id, u.name as username, 
-                    COALESCE(p.elo_rating, 1200) as rating, 
-                    COUNT(CASE WHEN m.winner_id = u.id THEN 1 END) as wins,
-                    COUNT(m.id) - COUNT(CASE WHEN m.winner_id = u.id THEN 1 END) as losses,
-                    0 as draws
-             FROM users u
-             JOIN matches m ON (m.player1_id = u.id OR m.player2_id = u.id)
-             LEFT JOIN user_profiles p ON u.id = p.user_id
-             WHERE m.created_at >= NOW() - INTERVAL '${interval}'
-             GROUP BY u.id, u.name, p.elo_rating
-             ORDER BY wins DESC, rating DESC
-             LIMIT 50`
-        );
-    } else {
-        // all-time (default)
-        leaderboardResult = await pool.query(
-            `SELECT u.id, u.name as username, 
-                COALESCE(p.elo_rating, 1200) as rating, 
-                COALESCE(p.match_won, 0) as wins, 
-                COALESCE(p.battle_played - p.match_won, 0) as losses,
-                0 as draws
-         FROM users u
-         LEFT JOIN user_profiles p ON u.id = p.user_id
-         ORDER BY rating DESC, wins DESC
-         LIMIT 50`
-        );
-
-        return res.status(200).json(
-            new ApiResponse(200, leaderboardResult.rows, "Leaderboard fetched successfully")
-        );
-    });
-
 export {
     registerUser,
     loginUser,
     logout,
     regenerateAccessToken,
-    changePassword,
-    displayUser,
-    updateAvtar,
+    forgetPassword,
+
+
     updateProfileInfo,
     getUserprofile,
     getMatchHistory

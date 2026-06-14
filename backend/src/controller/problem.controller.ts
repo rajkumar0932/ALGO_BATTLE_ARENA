@@ -1,79 +1,52 @@
-import asynchr from '../util/asynchronous';
-import { ApiResponse } from '../util/customresponse';
-import { pool } from '../config/db';
+import asyncHandler from "../util/asynchronous";
+import { Request, Response } from "express";
+import { pool } from "../config/db";
 
-// ──────────────────────────────────────────────
-// GET /problems — fetch problems with pagination
-// ──────────────────────────────────────────────
-const getProblems = asynchr(async (req: any, res: any) => {
-    // Pagination parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = 7; // Fixed pagination limit of 7 problems as requested
-    const offset = (page - 1) * limit;
+export const GetProblem = asyncHandler(async (req: Request, res: Response) => {
 
-    // Optional filters
-    const difficulty = req.query.difficulty; // e.g., 'EASY', 'MEDIUM', 'HARD'
-    const search = req.query.search; // e.g., 'Two Sum'
+    const difficulty = req.query.difficulty as string;
+    const search = req.query.search as string;
+    const page = Number(req.query.page) || 1;
 
-    let query = `
-        SELECT 
-            id, 
-            LOWER(REPLACE(title, ' ', '-')) as slug,
-            title, 
-            UPPER(difficulty) as difficulty, 
-            LEFT(statement, 150) as description,
-            10 as testcases_count -- Mock test cases count since table doesn't exist yet
-        FROM problems
-        WHERE 1=1
-    `;
-    const queryParams: any[] = [];
-    let paramIndex = 1;
+    const offset = (page - 1) * 10;
 
-    if (difficulty && difficulty !== 'ALL') {
-        query += ` AND UPPER(difficulty) = $${paramIndex}`;
-        queryParams.push(difficulty.toUpperCase());
-        paramIndex++;
+    let query = `SELECT * FROM problems`;
+    let queryCOUNT = `SELECT COUNT(*) FROM problems`;
+    const values: any[] = [];
+    const conditions: string[] = [];
+
+    // filter: difficulty
+    if (difficulty) {
+        values.push(difficulty);
+        conditions.push(`difficulty = $${values.length}`);
     }
 
+    // filter: search
     if (search) {
-        query += ` AND title ILIKE $${paramIndex}`;
-        queryParams.push(`%${search}%`);
-        paramIndex++;
+        values.push(`%${search}%`);
+        conditions.push(`title ILIKE $${values.length}`);
     }
 
-    // Add count query to get total number of problems for frontend pagination
-    const countQuery = `SELECT COUNT(*) FROM (${query}) AS subquery`;
-    const totalCountResult = await pool.query(countQuery, queryParams);
-    const totalCount = parseInt(totalCountResult.rows[0].count);
+    if (conditions.length > 0) {
+        query += ` WHERE ` + conditions.join(" AND ");
+    }
 
-    // Add pagination and sorting
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(limit, offset);
+    // pagination
+    values.push(10);
+    values.push(offset);
 
-    const problemsResult = await pool.query(query, queryParams);
+    query += ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
 
-    // Format the response to match the frontend Problem interface:
-    // { id, slug, title, difficulty, description, _count: { testCases } }
-    const formattedProblems = problemsResult.rows.map(row => ({
-        id: row.id,
-        slug: row.slug,
-        title: row.title,
-        difficulty: row.difficulty,
-        description: row.description,
-        _count: { testCases: parseInt(row.testcases_count) }
-    }));
+    const result = await pool.query(query, values);
+    const easyCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'easy'`);
+    const mediumCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'medium' `);
+    const hardCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'hard' `);
 
-    return res.status(200).json(
-        new ApiResponse(200, {
-            problems: formattedProblems,
-            pagination: {
-                total: totalCount,
-                page,
-                limit,
-                totalPages: Math.ceil(totalCount / limit)
-            }
-        }, "Problems fetched successfully")
-    );
+
+    return res.status(200).json({
+        success: true,
+        count: result.rowCount,
+        easyCount, mediumCount, hardCount,
+        data: result.rows
+    });
 });
-
-export { getProblems };

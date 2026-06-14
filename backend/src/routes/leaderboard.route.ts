@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { getLeaderboard } from '../controller/leaderboard.controller';
+import { GetLeaderBoard } from '../controller/leaderboard.controller';
 
 const leaderboardRouter = Router();
 
-leaderboardRouter.route('/').get(getLeaderboard);
+leaderboardRouter.route('/').get(GetLeaderBoard);
 
 export default leaderboardRouter;

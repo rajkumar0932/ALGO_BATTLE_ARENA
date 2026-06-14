@@ -6,6 +6,7 @@ import leaderboardRouter from './routes/leaderboard.route';
 import problemRouter from './routes/problem.route';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { battleRouter } from './routes/battle.route';
 
 const app = express();
 app.use(cors({
@@ -20,6 +21,7 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // router be here
+app.use('/battle', battleRouter);
 app.use('/user', userRouter)
 app.use('/leaderboard', leaderboardRouter)
 app.use('/problems', problemRouter)
