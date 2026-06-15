@@ -421,6 +421,9 @@ const storage = multer.diskStorage({
 > 1. **Timer Serialization:** We use Node.js `setInterval` to manage the countdown clock and broadcast ticks every second. You cannot serialize a running JavaScript `NodeJS.Timeout` object into a Redis database; the timer execution *must* live in Node.js memory.
 > 2. **Overhead:** Reading/writing to a Map in RAM is synchronous and instantaneous. Redis requires async network calls (`await redisClient...`) for every single state update or timer tick, which adds unnecessary latency and complexity for a single-server deployment."
 
+### Q: Why did you split your WebSocket logic into separate files (`matchmaking.ts` and `battle.ts`) instead of keeping everything in `index.ts`?
+> "I followed the **Separation of Concerns** principle. Multiplayer games have distinct lifecycle phases. `matchmaking.ts` is solely responsible for queue management and pairing algorithms (finding an opponent). Once a match is found, control is handed over to `battle.ts`, which manages the actual gameplay loop: tracking the 15-minute countdown clock, handling real-time code submissions, calculating Elo rating changes, and declaring winners. Splitting them makes the code highly modular, easier to unit test, and prevents `index.ts` from becoming a monolithic, unmaintainable file."
+
 ---
 
 ## 12. Things You Can Improve (Talking Points for "What would you do differently?")
