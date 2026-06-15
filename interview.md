@@ -404,6 +404,9 @@ const storage = multer.diskStorage({
 ### Q: How does pagination work in your problem listing?
 > "I use LIMIT + OFFSET pattern. The client sends a `page` query parameter. I calculate `offset = (page - 1) * 10`. The query becomes `SELECT * FROM problems ... LIMIT 10 OFFSET 20` (for page 3). This returns 10 results per page. I also return difficulty counts (easy/medium/hard) for frontend filter UI."
 
+### Q: Why use the raw TCP connection for Redis instead of a REST/HTTP endpoint?
+> "For real-time multiplayer matchmaking, speed and persistent connections are critical. The raw TCP connection maintains a single, permanent open pipeline to the Redis server, allowing commands to be executed with zero handshake overhead. More importantly, TCP allows for **Pub/Sub** capabilities, where the Redis server can 'push' events to the Node.js backend. HTTP is stateless and requires opening a brand new connection for every command, which adds latency and makes real-time server-side pushing impossible."
+
 ---
 
 ## 12. Things You Can Improve (Talking Points for "What would you do differently?")
