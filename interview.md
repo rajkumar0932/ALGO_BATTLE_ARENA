@@ -416,6 +416,11 @@ const storage = multer.diskStorage({
 ### Q: Your active battles and timers are stored in a JavaScript `Map`. What happens if your application scales to multiple backend servers?
 > "Currently, `activeBattles` is a module-level variable that acts as an in-memory singleton for my single Node.js instance. If I scaled horizontally to multiple servers behind a load balancer, those servers would not share RAM. To solve this, I would migrate the `activeBattles` Map into a **Redis Hash** so all servers could read/write to a shared state, and I would use Redis Pub/Sub to sync timer updates across the different WebSocket server instances."
 
+### Q: Since you are already using Redis for the matchmaking queue, why not use it for the active battle states too?
+> "Using Redis Hashes (`HSET`, `HGET`) for active battle states is the industry standard for distributed systems. However, for this single-server MVP, I chose JavaScript Maps for two main reasons: 
+> 1. **Timer Serialization:** We use Node.js `setInterval` to manage the countdown clock and broadcast ticks every second. You cannot serialize a running JavaScript `NodeJS.Timeout` object into a Redis database; the timer execution *must* live in Node.js memory.
+> 2. **Overhead:** Reading/writing to a Map in RAM is synchronous and instantaneous. Redis requires async network calls (`await redisClient...`) for every single state update or timer tick, which adds unnecessary latency and complexity for a single-server deployment."
+
 ---
 
 ## 12. Things You Can Improve (Talking Points for "What would you do differently?")
