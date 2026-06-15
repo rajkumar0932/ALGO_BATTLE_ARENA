@@ -271,7 +271,39 @@ battleRouter.route('/online').get(AuthMiddleware, (req, res) => res.status(501).
 
 ---
 
-## 7. SQL Queries Explained
+## 7. Real-Time WebSocket Infrastructure (Socket.io)
+
+### 7.1 WebSocket Architecture & Setup
+```typescript
+const io = new Server(httpServer, {
+    cors: { origin: allowedOrigins, credentials: true },
+});
+io.use(socketAuthMiddleware);
+```
+> **Interview Answer:** "For real-time functionality (1v1 matchmaking and live battles), HTTP polling is too slow and resource-intensive. I integrated `Socket.io` because it provides an event-driven, full-duplex communication channel. I attached the WebSocket server directly to the same Express `httpServer` so they run on the same port, avoiding separate deployment infrastructure."
+
+### 7.2 WebSocket Authentication Middleware
+```typescript
+export const socketAuthMiddleware = (socket: Socket, next: Function) => {
+    try {
+        const token = socket.handshake.auth.token;
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        socket.data.userId = decoded.id;
+        next();
+    } catch (err) {
+        next(new Error("Authentication error"));
+    }
+};
+```
+> **Interview Answer:** "WebSockets need authentication just like HTTP routes. Instead of sending tokens in HTTP headers (which is tricky with native WebSockets), I pass the JWT access token in the `socket.handshake.auth` payload during the initial connection. The middleware verifies this JWT. If valid, I extract the `userId` and attach it to `socket.data.userId`. This is crucial because it ensures that for the lifetime of that socket connection, we know exactly which user is sending events, completely preventing impersonation during a live battle."
+
+### 7.3 State Management & Typings
+I designed strict TypeScript interfaces (`BattleState`, `BattlePlayer`, `BattleResult`) to maintain the single source of truth in memory during an active battle.
+> **Interview Answer:** "To manage live battles, I designed an in-memory state machine using TypeScript interfaces. A `BattleState` tracks the `battleId`, current `phase` (WAITING, ACTIVE, COMPLETED), the `problemId`, the `remainingSec` timer, and the states of both players. Each `BattlePlayer` tracks their `verdict` (ACCEPTED, WRONG_ANSWER, RUNTIME_ERROR) and `passedCases`. This strongly-typed state ensures the server definitively manages the game clock and score, preventing clients from cheating or sending malicious state updates."
+
+---
+
+## 8. SQL Queries Explained
 
 ### Parameterized Queries (SQL Injection Prevention)
 ```typescript
@@ -305,7 +337,7 @@ WHERE u.name = $1
 
 ---
 
-## 8. Middleware Explained
+## 9. Middleware Explained
 
 ### Auth Middleware Flow:
 ```
@@ -327,7 +359,7 @@ const storage = multer.diskStorage({
 
 ---
 
-## 9. Security Measures Summary
+## 10. Security Measures Summary
 
 | Threat | Protection |
 |--------|-----------|
@@ -343,7 +375,7 @@ const storage = multer.diskStorage({
 
 ---
 
-## 10. Common Interview Questions & Answers
+## 11. Common Interview Questions & Answers
 
 ### Q: Why did you choose raw SQL over an ORM like Prisma/Sequelize?
 > "Raw SQL gives me full control over query optimization, especially for complex JOINs and aggregations needed in leaderboard/match history. ORMs add abstraction overhead and sometimes generate suboptimal queries. For a competitive coding platform where performance matters, raw SQL with parameterized queries was the right trade-off. I also understand exactly what's happening at the database level."
@@ -374,7 +406,7 @@ const storage = multer.diskStorage({
 
 ---
 
-## 11. Things You Can Improve (Talking Points for "What would you do differently?")
+## 12. Things You Can Improve (Talking Points for "What would you do differently?")
 
 1. **Rate Limiting** — Add `express-rate-limit` to prevent brute-force login attacks
 2. **Input Validation** — Use `zod` or `joi` for schema validation instead of manual checks
@@ -389,7 +421,7 @@ const storage = multer.diskStorage({
 
 ---
 
-## 12. How to Demo This Project
+## 13. How to Demo This Project
 
 ```bash
 # Terminal 1 — Start Backend
