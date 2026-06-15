@@ -407,6 +407,12 @@ const storage = multer.diskStorage({
 ### Q: Why use the raw TCP connection for Redis instead of a REST/HTTP endpoint?
 > "For real-time multiplayer matchmaking, speed and persistent connections are critical. The raw TCP connection maintains a single, permanent open pipeline to the Redis server, allowing commands to be executed with zero handshake overhead. More importantly, TCP allows for **Pub/Sub** capabilities, where the Redis server can 'push' events to the Node.js backend. HTTP is stateless and requires opening a brand new connection for every command, which adds latency and makes real-time server-side pushing impossible."
 
+### Q: Explain the Redis commands you used for the matchmaking queue (LPOP, RPUSH, LREM).
+> "I implemented the queue using a Redis List. 
+> 1. **`LPOP (List Pop)`**: When a user clicks 'Find Battle', I use `LPOP` to instantly pull the first available opponent from the left side of the queue. If it returns null, the queue is empty.
+> 2. **`RPUSH (Right Push)`**: If the queue is empty, I use `RPUSH` to add the user's data to the right side (the back) of the queue so the next person can match with them.
+> 3. **`LREM (List Remove)`**: If a user cancels their search or closes their browser, the `disconnect` event triggers `LREM` with a count of `0`. This scans the list and instantly deletes all occurrences of that user's exact JSON string, ensuring nobody matches with a disconnected 'ghost' player."
+
 ---
 
 ## 12. Things You Can Improve (Talking Points for "What would you do differently?")
