@@ -413,6 +413,9 @@ const storage = multer.diskStorage({
 > 2. **`RPUSH (Right Push)`**: If the queue is empty, I use `RPUSH` to add the user's data to the right side (the back) of the queue so the next person can match with them.
 > 3. **`LREM (List Remove)`**: If a user cancels their search or closes their browser, the `disconnect` event triggers `LREM` with a count of `0`. This scans the list and instantly deletes all occurrences of that user's exact JSON string, ensuring nobody matches with a disconnected 'ghost' player."
 
+### Q: Your active battles and timers are stored in a JavaScript `Map`. What happens if your application scales to multiple backend servers?
+> "Currently, `activeBattles` is a module-level variable that acts as an in-memory singleton for my single Node.js instance. If I scaled horizontally to multiple servers behind a load balancer, those servers would not share RAM. To solve this, I would migrate the `activeBattles` Map into a **Redis Hash** so all servers could read/write to a shared state, and I would use Redis Pub/Sub to sync timer updates across the different WebSocket server instances."
+
 ---
 
 ## 12. Things You Can Improve (Talking Points for "What would you do differently?")
