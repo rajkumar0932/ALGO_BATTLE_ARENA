@@ -138,6 +138,9 @@ Backend/
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/battle` | ✅ | Get last played matches with player names |
+| GET | `/battle/offline` | ✅ | Fetch list of available AI bots with ELO ratings |
+| GET | `/battle/online` | ✅ | Placeholder for online matchmaking (501 Not Implemented) |
+| GET | `/battle/custom` | ✅ | Placeholder for custom private rooms (501 Not Implemented) |
 
 ### Leaderboard Routes (`/leaderboard`)
 
@@ -259,6 +262,12 @@ Client sends multipart/form-data
                 → Cloud URL is stored in database
 ```
 > **Interview Answer:** "I used a two-step upload approach: Multer saves to disk first, then I upload to Cloudinary asynchronously. This decouples file reception from cloud upload. If Cloudinary fails, we still have the file locally to retry. After successful upload, we clean up the local file to save disk space."
+
+### 6.7 Stubbing & Iterative API Development (Placeholder Routes)
+```typescript
+battleRouter.route('/online').get(AuthMiddleware, (req, res) => res.status(501).json({ message: "Not implemented" }));
+```
+> **Interview Answer:** "When building out the `/battle` router, I created placeholder routes for upcoming features like `/online` and `/custom` using the 501 Not Implemented status. This allows the frontend to confidently start integrating the router structure without crashing the Express server (which happens if you leave trailing commas or empty middleware chains). It's a standard pattern for iterative API delivery."
 
 ---
 
@@ -404,6 +413,7 @@ npm run dev
 7. `GET /leaderboard` — Top players by ELO
 8. `POST /user/renewAccessToken` — Refresh expired access token
 9. `POST /user/logout` — Clear tokens
+10. `GET /battle/offline` — Get list of AI bots from database
 
 ---
 

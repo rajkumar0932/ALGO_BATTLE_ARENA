@@ -120,6 +120,7 @@ const registerUser = asynchr(async (req: any, res: any) => {
 // ──────────────────────────────────────────────
 const loginUser = asynchr(async (req: any, res: any) => {
     const { username, email, password } = req.body;
+    console.log(req.body);
 
     if (!username && !email) {
         throw new ApiError(400, "Provide username or email");
@@ -166,7 +167,7 @@ const loginUser = asynchr(async (req: any, res: any) => {
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
         .json(
-            new ApiResponse(200, { accessToken, refreshToken }, "User logged in")
+            new ApiResponse(200, { user: foundUser, accessToken, refreshToken }, "User logged in")
         );
 });
 

@@ -1,7 +1,7 @@
 import { pool } from "./config/db";
 import app from "./app";
-
-
+import http from "http";
+import { Server } from "socket.io";
 
 async function start() {
     try {
@@ -10,13 +10,30 @@ async function start() {
         console.log("Database Connected");
         console.log(result.rows[0]);
 
-        app.listen(4000, () => {
-            console.log(`Server running on port 4000`);
+        // 1. Create HTTP server wrapping your Express app
+        const httpServer = http.createServer(app);
+
+        // 2. Initialize Socket.IO attached to this HTTP server
+        const allowedOrigins = process.env.ALLOWEDSITE?.split(',').map(s => s.trim()) || ["http://localhost:3002"];
+        const io = new Server(httpServer, {
+            cors: {
+                origin: allowedOrigins,
+                credentials: true,
+            },
         });
+
+        // 3. Import and run socket setup
+        const { setupSocket } = await import("./socket");
+        setupSocket(io);
+
+        // 4. IMPORTANT: Call .listen() on the httpServer, NOT the app!
+        httpServer.listen(4000, () => {
+            console.log(`Server running on port 4000 (HTTP + WebSockets)`);
+        });
+
     } catch (err) {
         console.error(err);
     }
 }
 
 start();
-// Trigger restart

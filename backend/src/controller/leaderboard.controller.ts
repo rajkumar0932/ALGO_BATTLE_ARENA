@@ -18,6 +18,7 @@ export const GetLeaderBoard = asyncHandler(
             leaderboardResult = await pool.query(`
                 WITH combinerow AS (
                     SELECT
+                        u.id,
                         u.name AS username,
                         v.elo_rating AS userrating,
 
@@ -41,6 +42,7 @@ export const GetLeaderBoard = asyncHandler(
                 )
 
                 SELECT
+                    id,
                     username,
                     userrating,
                     ROUND((won_match::NUMERIC / NULLIF(matches, 0)) * 100, 2) AS winrate,
@@ -59,6 +61,7 @@ export const GetLeaderBoard = asyncHandler(
             leaderboardResult = await pool.query(`
                 WITH combinerow AS (
                     SELECT
+                        u.id,
                         u.name AS username,
                         v.elo_rating AS userrating,
 
@@ -82,6 +85,7 @@ export const GetLeaderBoard = asyncHandler(
                 )
 
                 SELECT
+                    id,
                     username,
                     userrating,
                     ROUND((won_match::NUMERIC / NULLIF(matches, 0)) * 100, 2) AS winrate,
@@ -99,6 +103,7 @@ export const GetLeaderBoard = asyncHandler(
 
             leaderboardResult = await pool.query(`
                 SELECT
+                    u.id,
                     u.name AS username,
                     v.elo_rating AS userrating,
 

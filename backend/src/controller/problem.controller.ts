@@ -18,7 +18,7 @@ export const GetProblem = asyncHandler(async (req: Request, res: Response) => {
     // filter: difficulty
     if (difficulty) {
         values.push(difficulty);
-        conditions.push(`difficulty = $${values.length}`);
+        conditions.push(`difficulty::text ILIKE $${values.length}`);
     }
 
     // filter: search
@@ -27,9 +27,13 @@ export const GetProblem = asyncHandler(async (req: Request, res: Response) => {
         conditions.push(`title ILIKE $${values.length}`);
     }
 
+    let countQuery = `SELECT COUNT(*) FROM problems`;
     if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(" AND ");
+        countQuery += ` WHERE ` + conditions.join(" AND ");
     }
+
+    const countValues = [...values];
 
     // pagination
     values.push(10);
@@ -38,15 +42,19 @@ export const GetProblem = asyncHandler(async (req: Request, res: Response) => {
     query += ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
 
     const result = await pool.query(query, values);
-    const easyCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'easy'`);
-    const mediumCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'medium' `);
-    const hardCount = await pool.query(queryCOUNT + ` WHERE difficulty= 'hard' `);
+    const countResult = await pool.query(countQuery, countValues);
+    const totalCount = parseInt(countResult.rows[0].count, 10);
 
+    const easyCount = await pool.query(`SELECT COUNT(*) FROM problems WHERE difficulty::text ILIKE 'easy'`);
+    const mediumCount = await pool.query(`SELECT COUNT(*) FROM problems WHERE difficulty::text ILIKE 'medium'`);
+    const hardCount = await pool.query(`SELECT COUNT(*) FROM problems WHERE difficulty::text ILIKE 'hard'`);
 
     return res.status(200).json({
         success: true,
-        count: result.rowCount,
-        easyCount, mediumCount, hardCount,
+        count: totalCount,
+        easyCount: parseInt(easyCount.rows[0].count, 10),
+        mediumCount: parseInt(mediumCount.rows[0].count, 10),
+        hardCount: parseInt(hardCount.rows[0].count, 10),
         data: result.rows
     });
 });

@@ -9,12 +9,11 @@ import cookieParser from 'cookie-parser';
 import { battleRouter } from './routes/battle.route';
 
 const app = express();
+const allowedOrigins = process.env.ALLOWEDSITE?.split(',').map(s => s.trim()) || [];
 app.use(cors({
-    origin: process.env.ALLOWEDSITE,
+    origin: allowedOrigins,
     credentials: true
-}
-
-))
+}))
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" })); // Parses form data.
 app.use(express.static("public"));
