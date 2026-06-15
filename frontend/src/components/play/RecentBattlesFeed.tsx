@@ -27,22 +27,43 @@ export function RecentBattlesFeed() {
     return () => clearInterval(timer);
   }, []);
 
-  const battles = useMemo(() => {
-    const names = ["kumarraj0932", "AlgoKing", "ByteMaster", "CodeNinja", "SpeedTypist"];
-    const problems = ["Two Sum", "Valid Parentheses", "Merge Intervals", "LRU Cache"];
-    
-    return Array.from({ length: 4 }).map((_, i) => {
-      const isWin = Math.random() > 0.3;
-      return {
-        id: i,
-        player1: names[Math.floor(Math.random() * names.length)],
-        player2: "opponent",
-        problem: problems[Math.floor(Math.random() * problems.length)],
-        isWin,
-        timestamp: Date.now() - Math.random() * 3600000 - (i * 600000), // Staggered over last hour
-        duration: `${Math.floor(Math.random() * 10) + 1}m ${Math.floor(Math.random() * 60)}s`,
-      };
-    }).sort((a, b) => b.timestamp - a.timestamp);
+  const [battles, setBattles] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchBattles = async () => {
+      try {
+        const r = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/battle`, {
+          credentials: 'include'
+        });
+        const data = await r.json();
+        if (data.success && data.data) {
+          const formattedBattles = data.data.map((m: any) => {
+            const isDraw = !m.winner;
+            const winnerName = m.winner;
+            const loserName = m.winner === m.player1 ? m.player2 : m.player1;
+
+            const totalSecs = Math.floor(m.duration || 0); 
+            const mns = Math.floor(totalSecs / 60);
+            const scs = totalSecs % 60;
+
+            return {
+              id: m.id,
+              player1: isDraw ? m.player1 : winnerName,
+              player2: isDraw ? m.player2 : loserName,
+              problem: m.problem || "Unknown Problem",
+              isWin: !isDraw,
+              isDraw: isDraw,
+              timestamp: new Date(m.played_at).getTime(),
+              duration: `${mns}m ${scs}s`,
+            };
+          });
+          setBattles(formattedBattles);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchBattles();
   }, []);
 
   return (
@@ -64,7 +85,9 @@ export function RecentBattlesFeed() {
           background: 'rgba(255,255,255,0.015)'
         }}>
           <div className="divide-y divide-white/5">
-            {battles.map((battle) => (
+            {battles.length === 0 ? (
+              <div className="p-6 text-center text-sm text-gray-500 font-medium">No recent battles found.</div>
+            ) : battles.map((battle) => (
               <div 
                 key={battle.id} 
                 className="p-4 sm:px-6 flex items-center justify-between transition-colors group/row"
@@ -79,10 +102,12 @@ export function RecentBattlesFeed() {
                 }}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-black/40 border ${battle.isWin ? 'border-[#00e5ff]/30 text-[#00e5ff]' : 'border-accent-rose/30 text-accent-rose'}`} style={{
-                    boxShadow: battle.isWin ? '0 0 10px rgba(0,229,255,0.2)' : 'none'
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-black/40 border ${battle.isDraw ? 'border-gray-500/30 text-gray-500' : battle.isWin ? 'border-[#00e5ff]/30 text-[#00e5ff]' : 'border-accent-rose/30 text-accent-rose'}`} style={{
+                    boxShadow: battle.isWin && !battle.isDraw ? '0 0 10px rgba(0,229,255,0.2)' : 'none'
                   }}>
-                    {battle.isWin ? (
+                    {battle.isDraw ? (
+                      <span className="font-bold text-xs">Draw</span>
+                    ) : battle.isWin ? (
                       <Trophy className="w-5 h-5" />
                     ) : (
                       <XCircle className="w-5 h-5" />
@@ -91,7 +116,7 @@ export function RecentBattlesFeed() {
                   <div>
                     <div className="text-sm">
                       <span className="font-bold text-gray-200">{battle.player1}</span>
-                      <span className="text-gray-500 mx-2">{battle.isWin ? 'beat' : 'lost to'}</span>
+                      <span className="text-gray-500 mx-2">{battle.isDraw ? 'tied with' : battle.isWin ? 'beat' : 'lost to'}</span>
                       <span className="font-bold text-gray-200">{battle.player2}</span>
                     </div>
                     <div className="text-xs text-gray-400 mt-1">

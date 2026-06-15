@@ -19,7 +19,8 @@ export function ProblemsList({
   filter,
   setFilter,
   search,
-  setSearch
+  setSearch,
+  stats
 }: { 
   problems: Problem[];
   loading: boolean;
@@ -27,19 +28,12 @@ export function ProblemsList({
   setFilter: (f: "ALL" | "EASY" | "MEDIUM" | "HARD") => void;
   search: string;
   setSearch: (s: string) => void;
+  stats: { easy: number; medium: number; hard: number };
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Since filtering is now server-side, we just map the raw props
   const filteredProblems = problems;
-
-  const stats = useMemo(() => {
-    return {
-      easy: problems.filter((p) => p.difficulty === "EASY").length,
-      medium: problems.filter((p) => p.difficulty === "MEDIUM").length,
-      hard: problems.filter((p) => p.difficulty === "HARD").length,
-    };
-  }, [problems]);
 
   return (
     <div className="w-full">
@@ -101,7 +95,17 @@ export function ProblemsList({
 
         {/* Rows */}
         <div className="flex flex-col">
-          {filteredProblems.map((problem) => {
+          {loading ? (
+            Array.from({ length: 10 }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="grid sm:grid-cols-[auto_1fr_auto_auto_auto] gap-4 px-6 py-4 items-center animate-pulse" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="w-8 flex justify-center"><div className="w-5 h-5 bg-white/10 rounded-full"></div></div>
+                <div className="flex items-center gap-3"><div className="h-5 bg-white/10 rounded w-48"></div></div>
+                <div className="w-24"><div className="h-5 bg-white/10 rounded w-16"></div></div>
+                <div className="w-24 flex justify-end"><div className="h-5 bg-white/10 rounded w-8"></div></div>
+                <div className="w-28 flex justify-end pr-2"><div className="h-8 bg-white/10 rounded w-20"></div></div>
+              </div>
+            ))
+          ) : filteredProblems.map((problem) => {
             const isExpanded = expandedId === problem.id;
             const isFeatured = problem.title === "Valid Parentheses";
             
@@ -200,7 +204,7 @@ export function ProblemsList({
             );
           })}
           
-          {filteredProblems.length === 0 && (
+          {!loading && filteredProblems.length === 0 && (
             <div className="py-12 text-center text-gray-500">
               No problems found matching your criteria.
             </div>

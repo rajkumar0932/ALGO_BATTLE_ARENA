@@ -11,10 +11,10 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-export default function ChangePassword() {
+export default function ForgotPassword() {
   const navigate = useNavigate();
   const { user, status } = useAuth();
-  const [oldPassword, setOldPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,10 +27,6 @@ export default function ChangePassword() {
       label: "Passwords match",
       met: newPassword === confirmPassword && confirmPassword.length > 0,
     },
-    {
-      label: "Different from old password",
-      met: newPassword.length > 0 && newPassword !== oldPassword,
-    },
   ];
 
   const allChecksMet = passwordChecks.every((c) => c.met);
@@ -40,8 +36,8 @@ export default function ChangePassword() {
     setError("");
     setSuccess("");
 
-    if (!oldPassword) {
-      setError("Enter your current password");
+    if (!email) {
+      setError("Enter your email address");
       return;
     }
     if (newPassword.length < 6) {
@@ -52,23 +48,17 @@ export default function ChangePassword() {
       setError("Passwords do not match");
       return;
     }
-    if (newPassword === oldPassword) {
-      setError("New password must be different from old password");
-      return;
-    }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("algobattle_token");
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/changePassword`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/forgetPassword`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ oldPassword, newPassword }),
+          body: JSON.stringify({ email, newPassword }),
         }
       );
       const data = await res.json();
@@ -101,9 +91,9 @@ export default function ChangePassword() {
           <div className="w-14 h-14 bg-gradient-to-br from-accent-cyan to-accent-purple rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-accent-cyan/20">
             <ShieldCheck className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Change Password</h1>
+          <h1 className="text-3xl font-bold mb-2">Forgot Password</h1>
           <p className="text-gray-400">
-            Secure your account with a new password
+            Reset your password via email
           </p>
         </div>
 
@@ -125,25 +115,24 @@ export default function ChangePassword() {
               </div>
             )}
 
-            {/* Old Password */}
+            {/* Email */}
             <div>
               <label
-                htmlFor="old-password"
+                htmlFor="email"
                 className="block text-sm font-medium text-gray-300 mb-2"
               >
-                Current Password
+                Email Address
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  id="old-password"
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="••••••••"
+                  placeholder="you@example.com"
                   required
-                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -223,7 +212,7 @@ export default function ChangePassword() {
                 <div className="w-5 h-5 border-2 border-bg-primary/30 border-t-bg-primary rounded-full animate-spin" />
               ) : (
                 <>
-                  Update Password
+                  Reset Password
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

@@ -41,7 +41,7 @@ export default function Register() {
       );
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Registration failed");
+        setError(data.message || data.error || "Registration failed");
         return;
       }
       navigate("/login");

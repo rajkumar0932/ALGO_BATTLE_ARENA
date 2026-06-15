@@ -1,23 +1,17 @@
 import { io, Socket } from "socket.io-client";
-import type {
-  ClientToServerEvents,
-  ServerToClientEvents,
-} from "@algobattle/types";
+import { API_URL } from "./api";
 
-type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+let socket: Socket | null = null;
 
-let socket: TypedSocket | null = null;
-
-export function getSocket(): TypedSocket {
+export function getSocket(): Socket {
   if (!socket) {
     const token = localStorage.getItem("algobattle_token");
-
-    socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
+    socket = io(API_URL, {
       autoConnect: false,
       transports: ["websocket", "polling"],
       auth: {
-        token: token
-      }
+        token: token,
+      },
     });
   }
   return socket;

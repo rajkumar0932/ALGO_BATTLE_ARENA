@@ -26,6 +26,7 @@ export default function Problems() {
   const [totalPages, setTotalPages] = useState(1);
   const [filter, setFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
   const [search, setSearch] = useState("");
+  const [stats, setStats] = useState({ easy: 0, medium: 0, hard: 0 });
 
   // Debounce search
   useEffect(() => {
@@ -45,22 +46,35 @@ export default function Problems() {
     
     // Build query params
     const params = new URLSearchParams({ page: page.toString() });
-    if (filter !== "ALL") params.append("difficulty", filter);
+    if (filter !== "ALL") params.append("difficulty", filter.toLowerCase());
     if (search) params.append("search", search);
 
     fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/problems?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.data) {
-          setProblems(data.data.problems);
-          setTotalPages(data.data.pagination.totalPages || 1);
+          const mappedProblems = data.data.map((p: any) => ({
+            id: p.id,
+            slug: p.id, // Using id as slug for routing
+            title: p.title,
+            difficulty: p.difficulty?.toUpperCase() || "EASY",
+            description: p.statement || "",
+            _count: { testCases: 0 } // Backend doesn't return test cases count yet
+          }));
+          setProblems(mappedProblems);
+          setTotalPages(Math.ceil(data.count / 10) || 1);
+          setStats({
+            easy: data.easyCount || 0,
+            medium: data.mediumCount || 0,
+            hard: data.hardCount || 0
+          });
         } else {
-          setProblems(MOCK_PROBLEMS);
+          setProblems([]);
         }
         setLoading(false);
       })
       .catch(() => {
-        setProblems(MOCK_PROBLEMS);
+        setProblems([]);
         setLoading(false);
       });
   };
@@ -82,9 +96,7 @@ export default function Problems() {
           </h1>
           <div style={{ borderLeft: "2px solid rgba(0,229,255,0.3)", paddingLeft: "12px" }}>
             <p className="text-gray-400 text-lg max-w-2xl font-mono text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              {loading && problems.length === 0
-                ? "[LOADING PROBLEMS...]"
-                : `[CLASSIFIED] Master these algorithms to dominate in ranked battles. Solutions are judged against ${totalTestCases} total test cases.`}
+              {`[CLASSIFIED] Master these algorithms to dominate in ranked battles. Solutions are judged against ${totalTestCases} total test cases.`}
             </p>
           </div>
         </div>
@@ -96,29 +108,43 @@ export default function Problems() {
           setFilter={setFilter}
           search={search}
           setSearch={setSearch}
+          stats={stats}
         />
 
         {/* Pagination Controls */}
-        {!loading && totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 mt-8">
+        {!loading && (
+          <div className="flex justify-center items-center gap-2 mt-8">
             <button 
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
+              className="px-3 py-1.5 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
               style={{ fontFamily: "'Chakra Petch', sans-serif" }}
             >
-              PREV
+              &lt;
             </button>
-            <span className="text-gray-400 font-mono text-sm">
-              Page {page} of {totalPages}
-            </span>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${
+                  page === pageNum 
+                    ? "bg-[#00e5ff]/20 border-[#00e5ff] text-[#00e5ff] font-bold shadow-[0_0_10px_rgba(0,229,255,0.3)]" 
+                    : "border-transparent text-gray-400 hover:text-white hover:bg-white/5"
+                }`}
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}
+              >
+                {pageNum}
+              </button>
+            ))}
+
             <button 
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
+              className="px-3 py-1.5 rounded border border-[#00e5ff]/30 text-[#00e5ff] disabled:opacity-50 hover:bg-[#00e5ff]/10 transition-colors"
               style={{ fontFamily: "'Chakra Petch', sans-serif" }}
             >
-              NEXT
+              &gt;
             </button>
           </div>
         )}

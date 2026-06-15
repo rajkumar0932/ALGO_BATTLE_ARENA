@@ -9,10 +9,9 @@ import confetti from "canvas-confetti";
 type User = {
   id: string;
   username: string;
-  rating: number;
-  wins: number;
-  losses: number;
-  draws: number;
+  userrating: number;
+  winrate: string | number;
+  record: string;
 };
 
 export function LeaderboardClient({ 
@@ -22,7 +21,6 @@ export function LeaderboardClient({
   users: User[],
   currentUserId?: string 
 }) {
-  const [timeFilter, setTimeFilter] = useState<"ALL" | "WEEK" | "TODAY">("ALL");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const top3 = users.slice(0, 3);
@@ -69,29 +67,6 @@ export function LeaderboardClient({
 
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Time Toggle */}
-      <div className="flex justify-center mb-16 relative z-10">
-        <div className="flex gap-2">
-          {["All Time", "This Week", "Today"].map((t) => {
-            const val = t === "All Time" ? "ALL" : t === "This Week" ? "WEEK" : "TODAY";
-            const isActive = timeFilter === val;
-            return (
-              <button
-                key={t}
-                onClick={() => setTimeFilter(val as any)}
-                className="px-6 py-2 rounded text-sm font-bold transition-all border"
-                style={{
-                  background: isActive ? 'rgba(251,191,36,0.1)' : 'transparent',
-                  borderColor: isActive ? '#fbbf24' : 'rgba(255,255,255,0.08)',
-                  color: isActive ? '#fbbf24' : 'rgba(255,255,255,0.4)',
-                }}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Podium */}
       <div className="flex flex-col md:flex-row items-end justify-center gap-6 mb-16 px-4 pt-16 mt-8">
@@ -151,7 +126,9 @@ export function LeaderboardClient({
 }
 
 function PodiumCard({ user, rank, color, borderColor, iconColor, textBorderColor, delay, isCenter = false }: any) {
-  const winRate = ((user.wins / (user.wins + user.losses + user.draws)) * 100).toFixed(1);
+  const winRate = user.winrate || "0.00";
+  const record = user.record || "0-0";
+  const [wins, losses] = record.split("-");
   
   return (
     <motion.div 
@@ -183,7 +160,7 @@ function PodiumCard({ user, rank, color, borderColor, iconColor, textBorderColor
           {user.username}
         </Link>
         <div className="font-mono text-2xl mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: textBorderColor }}>
-          <CountUp end={user.rating} duration={2} />
+          <CountUp end={user.userrating} duration={2} />
         </div>
         <div className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-wider">Rating</div>
         
@@ -194,7 +171,7 @@ function PodiumCard({ user, rank, color, borderColor, iconColor, textBorderColor
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Record:</span>
-            <span className="text-gray-200 font-bold">{user.wins}W - {user.losses}L</span>
+            <span className="text-gray-200 font-bold">{wins}W - {losses}L</span>
           </div>
         </div>
       </div>
@@ -203,8 +180,10 @@ function PodiumCard({ user, rank, color, borderColor, iconColor, textBorderColor
 }
 
 function LeaderboardRow({ user, rank, isExpanded, onToggle, mockEloChange }: any) {
-  const totalGames = user.wins + user.losses + user.draws;
-  const winRate = totalGames > 0 ? ((user.wins / totalGames) * 100).toFixed(1) : "0.0";
+  const winRate = user.winrate || "0.00";
+  const record = user.record || "0-0";
+  const [wins, losses] = record.split("-");
+  const totalGames = parseInt(wins) + parseInt(losses);
 
   return (
     <div 
@@ -236,7 +215,7 @@ function LeaderboardRow({ user, rank, isExpanded, onToggle, mockEloChange }: any
 
         {/* Rating */}
         <div className="w-32 flex items-center justify-center gap-2">
-          <span className="text-white" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{user.rating}</span>
+          <span className="text-white" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{user.userrating}</span>
           <span className={`text-xs font-bold ${mockEloChange.color} font-mono ml-2`}>
             {mockEloChange.val > 0 ? '+' : ''}{mockEloChange.val}
           </span>
@@ -270,9 +249,9 @@ function LeaderboardRow({ user, rank, isExpanded, onToggle, mockEloChange }: any
               </div>
               <div>
                 <span className="text-gray-500 block mb-1">Record</span>
-                <span className="font-bold text-[#4ade80] font-mono">{user.wins}W</span>
+                <span className="font-bold text-[#4ade80] font-mono">{wins}W</span>
                 <span className="text-gray-600 mx-1">-</span>
-                <span className="font-bold text-[#f43f5e] font-mono">{user.losses}L</span>
+                <span className="font-bold text-[#f43f5e] font-mono">{losses}L</span>
               </div>
               <div>
                 <span className="text-gray-500 block mb-1">Favorite Problem</span>

@@ -1,4 +1,5 @@
 import { pool } from "./config/db";
+import { redisClient } from "./config/redis";
 import app from "./app";
 import http from "http";
 import { Server } from "socket.io";
@@ -9,6 +10,8 @@ async function start() {
 
         console.log("Database Connected");
         console.log(result.rows[0]);
+
+        await redisClient.connect();
 
         // 1. Create HTTP server wrapping your Express app
         const httpServer = http.createServer(app);

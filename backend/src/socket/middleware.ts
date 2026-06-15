@@ -8,7 +8,7 @@ export const socketAuthMiddleware = (socket: Socket, next: (err?: Error) => void
             return next(new Error("Authentication error: No token provided"));
         }
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string) as any;
-        socket.data.userTd = decoded.id;
+        socket.data.userId = decoded.id;
         next();
     }
     catch (err) {

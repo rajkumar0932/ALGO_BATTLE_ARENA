@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import type { AuthUser, AuthContextType, AuthStatus } from "@/types/auth";
+import type { AuthUser, AuthContextType, AuthStatus } from "../types/auth";
+import { apiFetch } from "./api";
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -14,7 +15,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
 
-  // Restore session from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -31,60 +31,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      console.log("Attempting sign in with:", email);
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-          credentials: "include", // send/receive cookies
-        }
-      );
-      
-      const data = await res.json();
-      console.log("Raw response from backend:", data);
+      const response = await apiFetch("/user/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (!res.ok) {
-        return { error: data.message || "Invalid credentials" };
-      }
-
-      // The backend uses ApiResponse which wraps data inside `data` property.
-      // E.g., data: { statusCode: 200, data: { user: {...}, accessToken: "..." }, message: "..." }
-      const responseData = data.data;
+      const responseData = response.data;
       if (!responseData) {
-        console.error("Backend did not return a 'data' object inside the response!");
-        return { error: "Invalid response from server" };
+        return { error: "Invalid response format from server" };
       }
 
-      // Save token
       const token = responseData.accessToken;
       if (token) {
         localStorage.setItem("algobattle_token", token);
-      } else {
-        console.warn("No accessToken found in the response data");
       }
 
-      // Read user object
       const u = responseData.user;
-      console.log("Extracted user object:", u);
-
       const loggedInUser: AuthUser = {
         id: u?.id || "",
         email: u?.email || email,
-        username: u?.name || u?.username || "Unknown Player",
+        username: u?.name || u?.username || "Unknown",
         rating: u?.rating || 1200,
       };
 
-      console.log("Saving AuthUser to state:", loggedInUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser));
       setUser(loggedInUser);
       setStatus("authenticated");
-      
+
       return {};
-    } catch (err) {
-      console.error("Fetch exception during login:", err);
-      return { error: "Something went wrong. Please try again." };
+    } catch (err: any) {
+      return { error: err.message || "Something went wrong" };
     }
   }, []);
 
