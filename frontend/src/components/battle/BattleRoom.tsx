@@ -24,6 +24,7 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
     opponentVerdict,
     opponentSubmitted,
     error,
+    mySubmissionResult,
     submitCode
   } = useBattle(battleId);
 
@@ -53,6 +54,19 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
       setIsSubmitting(false);
     }
   }, [battleState, code, currentUser.id]);
+
+  // Handle incoming submission result from the judge
+  useEffect(() => {
+    if (mySubmissionResult) {
+      setMyVerdict({
+        verdict: mySubmissionResult.verdict,
+        passedCases: mySubmissionResult.passedCases,
+        totalCases: mySubmissionResult.totalCases,
+        executionTimeMs: mySubmissionResult.executionTimeMs
+      });
+      setIsSubmitting(false);
+    }
+  }, [mySubmissionResult]);
 
   if (error) {
     return (

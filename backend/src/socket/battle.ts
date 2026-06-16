@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { BattleState, BattleResult, BattleVerdict } from "./types";
+import { evaluateSubmission } from "../services/judge";
 
 // In-memory store for active battles and their timers
 const activeBattles: Map<string, BattleState> = new Map();
@@ -81,40 +82,43 @@ export function setupBattle(io: Server, socket: Socket) {
     });
 
     // When a user hits the "Submit" button
-    socket.on("battle:submit", (payload: { battleId: string, code: string, language: string }) => {
+    // When a user hits the "Submit" button
+    socket.on("battle:submit", async (payload: { battleId: string, code: string, language: string, username?: string }) => {
         const { battleId } = payload;
         console.log(`[Battle ${battleId}] User ${socket.data.userId} submitted code.`);
 
         // 1. Tell both players someone submitted (to show "Judging...")
         io.emit("battle:opponent_submitted", { battleId });
 
-        // 2. Mock code evaluation (wait 3 seconds)
-        setTimeout(() => {
-            const verdict: BattleVerdict = "ACCEPTED";
+        // 2. Real Code Evaluation using Piston API!
+        const result = await evaluateSubmission(payload.code, "javascript", "two-sum");
 
-            // Send success result back to submitter
-            socket.emit("battle:submission_result", {
-                battleId,
-                submissionId: "sub_123",
-                verdict,
-                passedCases: 3,
-                totalCases: 3,
-                executionTimeMs: 45
-            });
+        console.log(`[Battle ${battleId}] Judge Verdict: ${result.verdict} in ${result.executionTimeMs}ms`);
 
-            // Tell the opponent what the verdict was
-            socket.broadcast.emit("battle:opponent_verdict", {
-                battleId,
-                verdict
-            });
+        // Send the result strictly back to the person who submitted
+        socket.emit("battle:submission_result", {
+            battleId,
+            submissionId: "sub_" + Math.random().toString(36).substr(2, 9),
+            verdict: result.verdict,
+            passedCases: result.passedCases,
+            totalCases: result.totalCases,
+            executionTimeMs: result.executionTimeMs
+        });
 
-            // End the battle since someone got it right!
+        // Tell the opponent what the verdict was
+        socket.broadcast.emit("battle:opponent_verdict", {
+            battleId,
+            verdict: result.verdict
+        });
+
+        // If they got it right, end the battle!
+        if (result.verdict === "ACCEPTED") {
             io.emit("battle:end", {
                 result: {
                     battleId,
                     isDraw: false,
                     winnerId: socket.data.userId,
-                    winnerUsername: "Player",
+                    winnerUsername: payload.username || "Player",
                     reason: "ACCEPTED",
                     player1EloChange: +15,
                     player2EloChange: -15,
@@ -123,11 +127,12 @@ export function setupBattle(io: Server, socket: Socket) {
                 }
             });
 
-            // Stop the timer
+            // Stop the countdown timer!
             if (battleTimers.has(battleId)) {
                 clearInterval(battleTimers.get(battleId)!);
                 battleTimers.delete(battleId);
             }
-        }, 3000);
+        }
     });
+
 }

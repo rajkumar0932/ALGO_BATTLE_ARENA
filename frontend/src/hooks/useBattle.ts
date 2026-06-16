@@ -17,6 +17,7 @@ export function useBattle(battleId: string) {
   const [remainingSec, setRemainingSec] = useState<number | null>(null);
   const [opponentVerdict, setOpponentVerdict] = useState<BattleVerdict | null>(null);
   const [opponentSubmitted, setOpponentSubmitted] = useState(false);
+  const [mySubmissionResult, setMySubmissionResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,12 @@ export function useBattle(battleId: string) {
       setError(payload.message);
     });
 
+    socket.on("battle:submission_result", (payload: any) => {
+      if (payload.battleId === battleId) {
+        setMySubmissionResult(payload);
+      }
+    });
+
     return () => {
       socket.emit("battle:leave", { battleId });
       socket.off("battle:start");
@@ -65,6 +72,7 @@ export function useBattle(battleId: string) {
       socket.off("battle:opponent_verdict");
       socket.off("battle:end");
       socket.off("battle:error");
+      socket.off("battle:submission_result");
     };
   }, [socket, isConnected, battleId]);
 
@@ -84,6 +92,7 @@ export function useBattle(battleId: string) {
     opponentVerdict,
     opponentSubmitted,
     error,
+    mySubmissionResult,
     submitCode,
     isConnected,
   };
