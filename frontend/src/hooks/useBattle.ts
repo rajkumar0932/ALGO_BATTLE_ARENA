@@ -17,7 +17,6 @@ export function useBattle(battleId: string) {
   const [remainingSec, setRemainingSec] = useState<number | null>(null);
   const [opponentVerdict, setOpponentVerdict] = useState<BattleVerdict | null>(null);
   const [opponentSubmitted, setOpponentSubmitted] = useState(false);
-  const [mySubmissionResult, setMySubmissionResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +59,9 @@ export function useBattle(battleId: string) {
 
     socket.on("battle:submission_result", (payload: any) => {
       if (payload.battleId === battleId) {
-        setMySubmissionResult(payload);
+        // We'll dispatch an event so the BattleRoom can catch it, or we could add a state
+        const event = new CustomEvent('battle:my_verdict', { detail: payload });
+        window.dispatchEvent(event);
       }
     });
 
@@ -72,7 +73,6 @@ export function useBattle(battleId: string) {
       socket.off("battle:opponent_verdict");
       socket.off("battle:end");
       socket.off("battle:error");
-      socket.off("battle:submission_result");
     };
   }, [socket, isConnected, battleId]);
 
@@ -92,7 +92,6 @@ export function useBattle(battleId: string) {
     opponentVerdict,
     opponentSubmitted,
     error,
-    mySubmissionResult,
     submitCode,
     isConnected,
   };

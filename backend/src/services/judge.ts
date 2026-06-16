@@ -1,5 +1,5 @@
 import { BattleVerdict } from "../socket/types";
-import vm from "vm";
+import { pool } from "../config/db";
 
 // Represents a test case structure
 export interface TestCase {
@@ -7,66 +7,127 @@ export interface TestCase {
   expectedOutput: string; // The JSON stringified expected output, e.g., "[0,1]"
 }
 
-// Hardcoded test cases for MVP. In a real system, fetch from PostgreSQL based on problemSlug
-const problemDatabase: Record<string, { funcName: string; testCases: TestCase[] }> = {
-  "two-sum": {
-    funcName: "twoSum",
-    testCases: [
-      { input: "[2,7,11,15], 9", expectedOutput: "[0,1]" },
-      { input: "[3,2,4], 6", expectedOutput: "[1,2]" },
-      { input: "[3,3], 6", expectedOutput: "[0,1]" }
-    ]
-  }
-};
+/**
+ * Builds the JS wrapper code that executes the user's function against the test cases.
+ */
+function buildJavascriptWrapper(userCode: string, funcName: string, testCases: TestCase[]): string {
+  let wrapper = `${userCode}\n\n`;
+  wrapper += `// --- HIDDEN TEST CASES START ---\n`;
+  wrapper += `try {\n`;
+
+  testCases.forEach((tc, index) => {
+    wrapper += `  const result${index + 1} = ${funcName}(${tc.input});\n`;
+    wrapper += `  if (JSON.stringify(result${index + 1}) !== JSON.stringify(${tc.expectedOutput})) {\n`;
+    wrapper += `    throw new Error("Test Case ${index + 1} Failed. Expected ${tc.expectedOutput} but got " + JSON.stringify(result${index + 1}));\n`;
+    wrapper += `  }\n`;
+  });
+
+  wrapper += `  console.log("ALL_CASES_PASSED");\n`;
+  wrapper += `} catch (err) {\n`;
+  wrapper += `  console.log("ASSERTION_ERROR: " + err.message);\n`;
+  wrapper += `}\n`;
+
+  return wrapper;
+}
+
+export interface JudgeResult {
+  verdict: BattleVerdict;
+  passedCases: number;
+  totalCases: number;
+  executionTimeMs: number;
+}
 
 /**
- * Evaluates the user's code against the hidden test cases using Node.js's built-in VM module.
- * This is incredibly fast and avoids relying on external rate-limited APIs!
+ * Evaluates the user's code using the public Piston API.
  */
 export async function evaluateSubmission(
   code: string,
   language: string,
-  problemSlug: string
-): Promise<{ verdict: BattleVerdict; passedCases: number; totalCases: number; executionTimeMs: number }> {
-  
-  const problem = problemDatabase[problemSlug];
-  if (!problem) throw new Error(`Problem ${problemSlug} not found in database.`);
-
-  const startTime = Date.now();
-
+  problemId: string
+): Promise<JudgeResult> {
+  // Only JS supported for MVP wrapper logic
   if (language !== "javascript") {
-    console.error("[Judge] We only support JavaScript right now!");
-    return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: problem.testCases.length, executionTimeMs: 0 };
+    return { verdict: "COMPILATION_ERROR", passedCases: 0, totalCases: 0, executionTimeMs: 0 };
   }
 
-  // Build the script string to execute
-  let wrapper = `${code}\n\n`;
-  
-  problem.testCases.forEach((tc, index) => {
-    wrapper += `const r${index} = ${problem.funcName}(${tc.input});\n`;
-    wrapper += `if (JSON.stringify(r${index}) !== JSON.stringify(${tc.expectedOutput})) {\n`;
-    wrapper += `  throw new Error("ASSERTION_ERROR: Test Case ${index + 1} Failed. Expected ${tc.expectedOutput} but got " + JSON.stringify(r${index}));\n`;
-    wrapper += `}\n`;
-  });
+  let testCases: TestCase[] = [];
+  let funcName = "solve";
 
   try {
-    // We execute the code in a completely fresh sandbox!
-    // The timeout: 2000 ensures that if the user writes an infinite while(true) loop, it will automatically kill it!
-    vm.runInNewContext(wrapper, { JSON, Math, Array, String, Number, Map, Set, Object }, { timeout: 2000 });
-    
-    const executionTimeMs = Date.now() - startTime;
-    return { verdict: "ACCEPTED", passedCases: problem.testCases.length, totalCases: problem.testCases.length, executionTimeMs };
+      const res = await pool.query(`SELECT test_cases, starter_code FROM problems WHERE id = $1`, [problemId]);
+      if (res.rows.length === 0) {
+          return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: 0, executionTimeMs: 0 };
+      }
+      testCases = res.rows[0].test_cases;
+      
+      // Extract function name from JS starter code (e.g. "function twoSum(nums..." -> "twoSum")
+      const starterCode = res.rows[0].starter_code?.javascript;
+      if (starterCode) {
+          const match = starterCode.match(/function\s+([a-zA-Z0-9_]+)\s*\(/);
+          if (match && match[1]) {
+              funcName = match[1];
+          }
+      }
+  } catch (err) {
+      console.error("DB Error fetching test cases:", err);
+      return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: 0, executionTimeMs: 0 };
+  }
 
-  } catch (err: any) {
-    const executionTimeMs = Date.now() - startTime;
+  if (!testCases || testCases.length === 0) {
+      return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: 0, executionTimeMs: 0 };
+  }
+
+  const wrappedCode = buildJavascriptWrapper(code, funcName, testCases);
+
+  try {
+    const startTime = Date.now();
+
+    // Use local Piston container if env var is set, otherwise fallback to public API
+    const pistonEndpoint = process.env.PISTON_URL ? `${process.env.PISTON_URL}/api/v2/execute` : "https://emkc.org/api/v2/piston/execute";
     
-    if (err.message && err.message.includes("ASSERTION_ERROR:")) {
-      console.log(`[Judge] ${err.message}`);
-      return { verdict: "WRONG_ANSWER", passedCases: 0, totalCases: problem.testCases.length, executionTimeMs };
+    // Call the Piston API
+    const response = await fetch(pistonEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        language: "javascript",
+        version: "18.15.0", // Piston API JS version
+        files: [{ name: "main.js", content: wrappedCode }]
+      })
+    });
+
+    const data = await response.json();
+    const executionTimeMs = Date.now() - startTime; // Rough estimate of network + execution
+
+    if (!response.ok || !data.run) {
+      console.error("[Judge] API Error:", data);
+      return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: testCases.length, executionTimeMs };
     }
-    
-    // This catches infinite loops (ERR_SCRIPT_EXECUTION_TIMEOUT), Syntax Errors, and Reference Errors
-    console.log("[Judge] Runtime/Syntax Error:", err.message);
-    return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: problem.testCases.length, executionTimeMs };
+
+    const output = data.run.stdout as string;
+    const error = data.run.stderr as string;
+
+    // Check for runtime crash/syntax errors
+    if (error && error.trim().length > 0) {
+      console.log("[Judge] Stderr:", error);
+      return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: testCases.length, executionTimeMs };
+    }
+
+    // Check for our custom assertion markers
+    if (output.includes("ALL_CASES_PASSED")) {
+      return { verdict: "ACCEPTED", passedCases: testCases.length, totalCases: testCases.length, executionTimeMs };
+    } else if (output.includes("ASSERTION_ERROR:")) {
+      console.log("[Judge] Failed Assertions:", output.trim());
+      // For MVP, if it fails, we assume 0 passed (or we could parse exactly which case failed)
+      return { verdict: "WRONG_ANSWER", passedCases: 0, totalCases: testCases.length, executionTimeMs };
+    } else {
+      // Something unexpected was printed, or the function didn't return
+      console.log("[Judge] Unexpected Output:", output.trim());
+      return { verdict: "WRONG_ANSWER", passedCases: 0, totalCases: testCases.length, executionTimeMs };
+    }
+
+  } catch (err) {
+    console.error("[Judge] Fetch Error:", err);
+    return { verdict: "RUNTIME_ERROR", passedCases: 0, totalCases: testCases.length, executionTimeMs: 0 };
   }
 }

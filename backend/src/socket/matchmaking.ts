@@ -2,6 +2,8 @@ import { Server, Socket } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
 import { SocketData } from "./types";
 import { redisClient } from "../config/redis";
+import { pool } from "../config/db";
+import { createBattle } from "./battle";
 
 export function setupMatchmaking(io: Server, socket: Socket) {
     // Store the payload locally so we have access to it when the socket disconnects
@@ -42,18 +44,71 @@ export function setupMatchmaking(io: Server, socket: Socket) {
 
                 console.log(`[Lobby] Match created: ${payload.username} vs ${opponentData.user.username}`);
 
+                // Calculate average rating to pick difficulty
+                const avgRating = (payload.rating + opponentData.user.rating) / 2;
+                let difficulty = "easy";
+                if (avgRating > 1500 && avgRating <= 1900) {
+                    difficulty = "medium";
+                } else if (avgRating > 1900) {
+                    difficulty = "hard";
+                }
+
+                // Query DB for random problem of this difficulty
+                let problemId = null;
+                let problemTitle = "Unknown Problem";
+                try {
+                    const res = await pool.query(
+                        `SELECT id, title FROM problems WHERE difficulty = $1 ORDER BY RANDOM() LIMIT 1`,
+                        [difficulty]
+                    );
+                    if (res.rows.length > 0) {
+                        problemId = res.rows[0].id;
+                        problemTitle = res.rows[0].title;
+                    } else {
+                        // Fallback if no problem of that difficulty exists
+                        const fallback = await pool.query(`SELECT id, title FROM problems ORDER BY RANDOM() LIMIT 1`);
+                        if (fallback.rows.length > 0) {
+                            problemId = fallback.rows[0].id;
+                            problemTitle = fallback.rows[0].title;
+                        }
+                    }
+                } catch (dbErr) {
+                    console.error("DB Error selecting problem:", dbErr);
+                }
+
+                // Initialize Battle State for both users
+                createBattle({
+                    battleId,
+                    phase: "ACTIVE",
+                    problemId: problemId || "1",
+                    problemTitle: problemTitle,
+                    remainingSec: 60 * 15,
+                    player1: {
+                        userId: opponentData.user.userId,
+                        username: opponentData.user.username,
+                        rating: opponentData.user.rating,
+                        hasSubmitted: false
+                    },
+                    player2: {
+                        userId: payload.userId,
+                        username: payload.username,
+                        rating: payload.rating,
+                        hasSubmitted: false
+                    }
+                });
+
                 // 1. Notify OURSELVES (Player 2)
                 socket.emit("lobby:matched", {
                     battleId,
                     opponent: opponentData.user,
-                    problemSlug: "two-sum"
+                    problemId
                 });
 
                 // 2. Notify the OPPONENT (Player 1) using their saved socketId
                 io.to(opponentData.socketId).emit("lobby:matched", {
                     battleId,
                     opponent: payload,
-                    problemSlug: "two-sum"
+                    problemId
                 });
             }
         } catch (err) {

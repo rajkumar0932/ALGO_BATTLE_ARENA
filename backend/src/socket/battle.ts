@@ -3,48 +3,55 @@ import { BattleState, BattleResult, BattleVerdict } from "./types";
 import { evaluateSubmission } from "../services/judge";
 
 // In-memory store for active battles and their timers
-const activeBattles: Map<string, BattleState> = new Map();
-const battleTimers: Map<string, NodeJS.Timeout> = new Map();
+export const activeBattles: Map<string, BattleState> = new Map();
+export const battleTimers: Map<string, NodeJS.Timeout> = new Map();
+
+export function createBattle(battle: BattleState) {
+    activeBattles.set(battle.battleId, battle);
+}
 
 export function setupBattle(io: Server, socket: Socket) {
 
     // When the frontend loads the battle page, it asks to rejoin/start
-    socket.on("battle:rejoin", (payload: { battleId: string }) => {
+    socket.on("battle:rejoin", async (payload: { battleId: string }) => {
         const { battleId } = payload;
 
         console.log(`[Battle ${battleId}] User ${socket.data.userId} joined the room`);
 
-        // Mock a battle state if it doesn't exist yet
-        if (!activeBattles.has(battleId)) {
-            const newBattle: BattleState = {
-                battleId,
-                phase: "ACTIVE",
-                problemId: "1",
-                problemTitle: "Two Sum",
-                remainingSec: 60 * 15, // 15 minutes
-                player1: {
-                    userId: socket.data.userId, // This is you
-                    username: "Player 1",
-                    rating: 1200,
-                    hasSubmitted: false
-                },
-                player2: {
-                    userId: "opponent-id", // Mock opponent
-                    username: "Opponent",
-                    rating: 1200,
-                    hasSubmitted: false
-                }
-            };
-            activeBattles.set(battleId, newBattle);
+        // Get the battle state initialized by matchmaking
+        const battle = activeBattles.get(battleId);
+        
+        if (!battle) {
+            console.error(`[Battle ${battleId}] Error: Battle not found in activeBattles map`);
+            return;
         }
 
-        const battle = activeBattles.get(battleId)!;
+        // Fetch problem details from DB
+        let statement = "Problem description not found.";
+        let starterCode = "function solve() {\n  // Write code here\n}";
+        try {
+            const { pool } = require("../config/db");
+            const res = await pool.query(
+                `SELECT statement, starter_code FROM problems WHERE id = $1`,
+                [battle.problemId]
+            );
+            if (res.rows.length > 0) {
+                statement = res.rows[0].statement;
+                // For MVP, extract Javascript starter code if it's a JSON object
+                const codeJson = res.rows[0].starter_code;
+                if (codeJson && codeJson.javascript) {
+                    starterCode = codeJson.javascript;
+                }
+            }
+        } catch (dbErr) {
+            console.error(`[Battle ${battleId}] DB Error fetching problem details:`, dbErr);
+        }
 
         // Send the problem data to the frontend so it can render the editor
         socket.emit("battle:start", {
             battle,
-            starterCode: "function twoSum(nums, target) {\n  // Write your code here\n}",
-            description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
+            starterCode: starterCode,
+            description: statement,
             visibleTestCases: []
         });
 
@@ -87,11 +94,17 @@ export function setupBattle(io: Server, socket: Socket) {
         const { battleId } = payload;
         console.log(`[Battle ${battleId}] User ${socket.data.userId} submitted code.`);
 
+        const battle = activeBattles.get(battleId);
+        if (!battle) {
+            console.error(`[Battle ${battleId}] Error: Battle not found during submit.`);
+            return;
+        }
+
         // 1. Tell both players someone submitted (to show "Judging...")
         io.emit("battle:opponent_submitted", { battleId });
 
         // 2. Real Code Evaluation using Piston API!
-        const result = await evaluateSubmission(payload.code, "javascript", "two-sum");
+        const result = await evaluateSubmission(payload.code, "javascript", battle.problemId);
 
         console.log(`[Battle ${battleId}] Judge Verdict: ${result.verdict} in ${result.executionTimeMs}ms`);
 
@@ -113,17 +126,25 @@ export function setupBattle(io: Server, socket: Socket) {
 
         // If they got it right, end the battle!
         if (result.verdict === "ACCEPTED") {
+            const isP1Winner = socket.data.userId === battle.player1.userId;
+            const winner = isP1Winner ? battle.player1 : battle.player2;
+            const loser = isP1Winner ? battle.player2 : battle.player1;
+
+            const diff = Math.abs(winner.rating - loser.rating);
+            const cappedDiff = Math.min(diff, 3000); // "till 3000"
+            const eloChange = 20 + Math.floor(Math.max(0, cappedDiff - 1) / 50) * 10;
+
             io.emit("battle:end", {
                 result: {
                     battleId,
                     isDraw: false,
                     winnerId: socket.data.userId,
-                    winnerUsername: payload.username || "Player",
+                    winnerUsername: payload.username || winner.username,
                     reason: "ACCEPTED",
-                    player1EloChange: +15,
-                    player2EloChange: -15,
-                    player1NewRating: 1215,
-                    player2NewRating: 1185
+                    player1EloChange: isP1Winner ? eloChange : -eloChange,
+                    player2EloChange: isP1Winner ? -eloChange : eloChange,
+                    player1NewRating: battle.player1.rating + (isP1Winner ? eloChange : -eloChange),
+                    player2NewRating: battle.player2.rating + (isP1Winner ? -eloChange : eloChange)
                 }
             });
 

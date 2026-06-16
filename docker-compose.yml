@@ -1,2 +1,15 @@
-# Docker Compose — backend services removed.
-# Add services here if needed in the future.
+version: '3.8'
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston_api
+    restart: always
+    privileged: true
+    ports:
+      - "2000:2000"
+    # Piston requires a volume mounted to /piston to store installed languages
+    volumes:
+      - piston_data:/piston
+
+volumes:
+  piston_data:

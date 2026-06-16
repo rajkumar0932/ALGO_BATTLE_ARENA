@@ -24,7 +24,6 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
     opponentVerdict,
     opponentSubmitted,
     error,
-    mySubmissionResult,
     submitCode
   } = useBattle(battleId);
 
@@ -53,20 +52,18 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
       });
       setIsSubmitting(false);
     }
-  }, [battleState, code, currentUser.id]);
 
-  // Handle incoming submission result from the judge
-  useEffect(() => {
-    if (mySubmissionResult) {
-      setMyVerdict({
-        verdict: mySubmissionResult.verdict,
-        passedCases: mySubmissionResult.passedCases,
-        totalCases: mySubmissionResult.totalCases,
-        executionTimeMs: mySubmissionResult.executionTimeMs
-      });
+    const handleMyVerdict = (e: any) => {
+      setMyVerdict(e.detail);
       setIsSubmitting(false);
-    }
-  }, [mySubmissionResult]);
+    };
+
+    window.addEventListener('battle:my_verdict', handleMyVerdict);
+
+    return () => {
+      window.removeEventListener('battle:my_verdict', handleMyVerdict);
+    };
+  }, [battleState, code, currentUser.id]);
 
   if (error) {
     return (
@@ -109,7 +106,7 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] relative bg-[#0a0f1e]">
       {/* Animated Background Pulse */}
-      <div 
+      <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background: 'radial-gradient(circle at 50% 50%, rgba(0,212,255,0.05) 0%, transparent 60%)',
@@ -145,7 +142,7 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative z-10 p-4 gap-4">
 
         {/* Left: Problem Description & Verdicts */}
-        <div 
+        <div
           className="w-full md:w-[40%] xl:w-[35%] h-full flex flex-col bg-[#0a0f1e] overflow-y-auto rounded-xl"
           style={{
             borderLeft: '2px solid rgba(0, 212, 255, 0.3)',
@@ -177,7 +174,7 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
         </div>
 
         {/* Right: Editor */}
-        <div 
+        <div
           className="w-full md:w-[60%] xl:w-[65%] h-full flex flex-col overflow-hidden rounded-xl"
           style={{
             background: 'rgba(255, 255, 255, 0.02)',
@@ -228,7 +225,7 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
               }}
             >
               {/* Shimmer overlay */}
-              <div 
+              <div
                 className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100"
                 style={{
                   background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
@@ -261,12 +258,12 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
           <div className="glass-card max-w-lg w-full p-8 text-center neon-border relative overflow-hidden">
             {/* Background effect based on win/loss/draw */}
             <div className={`absolute inset-0 opacity-10 pointer-events-none ${battleResult.isDraw ? "bg-gray-500" :
-                battleResult.winnerId === currentUser.id ? "bg-accent-emerald" : "bg-accent-rose"
+              battleResult.winnerId === currentUser.id ? "bg-accent-emerald" : "bg-accent-rose"
               }`} />
 
             <div className="relative z-10">
               <Trophy className={`w-16 h-16 mx-auto mb-6 ${battleResult.isDraw ? "text-gray-400" :
-                  battleResult.winnerId === currentUser.id ? "text-accent-emerald drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "text-gray-600"
+                battleResult.winnerId === currentUser.id ? "text-accent-emerald drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "text-gray-600"
                 }`} />
 
               <h2 className="text-3xl font-black mb-2">
