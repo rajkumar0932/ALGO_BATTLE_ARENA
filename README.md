@@ -1,14 +1,88 @@
-# AlgoBattle Arena
+<div align="center">
 
-AlgoBattle Arena is a real-time, 1v1 competitive coding platform where developers battle head-to-head to solve algorithmic challenges. The platform features instantaneous matchmaking, sandboxed code execution, and an ELO-based ranking system.
+```
+ █████╗ ██╗      ██████╗  ██████╗ ██████╗  █████╗ ████████╗████████╗██╗     ███████╗
+██╔══██╗██║     ██╔════╝ ██╔═══██╗██╔══██╗██╔══██╗╚══██╔══╝╚══██╔══╝██║     ██╔════╝
+███████║██║     ██║  ███╗██║   ██║██████╔╝███████║   ██║      ██║   ██║     █████╗  
+██╔══██║██║     ██║   ██║██║   ██║██╔══██╗██╔══██║   ██║      ██║   ██║     ██╔══╝  
+██║  ██║███████╗╚██████╔╝╚██████╔╝██████╔╝██║  ██║   ██║      ██║   ███████╗███████╗
+╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝
+```
 
-This repository structure is divided into two main environments:
-- `/Backend` — Node.js + Express + Socket.IO server (TypeScript)
-- `/frontend` — React + Vite client application
+**⚔️ Real-time 1v1 Competitive Programming Battles**
 
-*Note: This documentation covers the **Backend** architecture and systems exclusively.*
+[![TypeScript](https://img.shields.io/badge/TypeScript-97%25-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-Vite-black?style=flat-square&logo=react)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=nodedotjs)](https://nodejs.org/)
+[![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444?style=flat-square&logo=turborepo)](https://turbo.build/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00e5ff?style=flat-square)](LICENSE)
 
-## 🏗️ Architecture Flow
+*Get matched with an opponent, solve the same algorithm problem, and race to submit the best solution. Climb the ELO leaderboard and prove your skills.*
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture Flow](#architecture-flow)
+- [API & Socket Contract](#api--socket-contract)
+- [Database & Connection Pooling](#database--connection-pooling)
+- [Authentication & Security](#authentication--security)
+- [Key Design Patterns](#key-design-patterns)
+- [Local Setup](#local-setup)
+
+---
+
+## Overview
+
+AlgoBattle Arena is a **real-time competitive programming platform** where developers go head-to-head in live 1v1 coding battles. Both players receive the same algorithmic challenge and race to submit a correct, efficient solution. The winner earns ELO rating points; the loser loses them. 
+
+The platform currently features two core experiences:
+1. **Ranked 1v1:** Skill-based matchmaking against real players with live WebSocket sync and shared timers.
+2. **vs AI Bot:** Practice against offline AI bots at varying difficulty tiers.
+
+---
+
+## Features
+
+### Core Gameplay
+- **Live 1v1 Ranked Battles** — Real-time WebSocket matchmaking pairs you with a player of similar ELO. Both see the same problem simultaneously.
+- **AI Bot Battles** — Practice against AI bots of varying difficulties to hone your skills before playing ranked matches.
+- **Live Battle Status** — Socket.io ensures both players see opponent submission verdicts (e.g., Wrong Answer, Accepted) live during a match.
+
+### Problem System
+- **Curated Problem Library** — Problems categorized by difficulty (Easy / Medium / Hard).
+- **Hidden Test Harness** — Each problem ships with hidden test cases. User code is dynamically wrapped and strictly asserted by the execution engine.
+
+### Ranking & Progression
+- **True ELO Rating System** — Win/loss adjusts your ELO dynamically based on opponent strength.
+- **Global Leaderboard** — Filterable global leaderboard to track the top competitive programmers on the platform.
+- **Personal Dashboard** — Track your match history, ELO rating, and win/loss records.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | React + Vite | Fast, client-side rendered SPA |
+| **Runtime** | Node.js + TypeScript | Strongly-typed, scalable backend environment |
+| **Framework** | Express.js | REST API and HTTP server routing |
+| **Real-time** | Socket.IO | Stateful bi-directional communication for battles |
+| **Database** | PostgreSQL (`pg` pool) | Hosted on Neon DB. Uses raw SQL with parameterized queries |
+| **Matchmaking** | Redis (Upstash) | High-speed matchmaking queue using List operations |
+| **Code Execution**| Piston API (Docker) | Secure, sandboxed multi-language execution hosted on AWS EC2 |
+| **Authentication**| Custom JWT + bcrypt | Secure, httpOnly revocable refresh token rotation |
+| **File Uploads** | Multer + Cloudinary | Two-stage profile avatar uploads (Disk to Cloud CDN) |
+| **Monorepo** | Turborepo | Parallel builds and task orchestration |
+
+---
+
+## Architecture Flow
 
 ```mermaid
 flowchart TD
@@ -25,23 +99,11 @@ flowchart TD
     ELO -->|Update Ratings| Postgres[(Neon PostgreSQL DB)]
 ```
 
-## 🛠️ Tech Stack
+---
 
-| Component | Technology | Purpose |
-| --- | --- | --- |
-| **Runtime** | Node.js + TypeScript | Strongly-typed, scalable server environment |
-| **Framework** | Express.js | REST API and HTTP server routing |
-| **Real-time** | Socket.IO | Stateful bi-directional communication for battles |
-| **Database** | PostgreSQL (`pg` pool) | Hosted on Neon DB. Uses raw SQL with parameterized queries |
-| **Matchmaking** | Redis (Upstash) | High-speed matchmaking queue using List operations |
-| **Code Execution**| Piston API (Docker) | Secure, sandboxed multi-language execution hosted on an AWS EC2 instance |
-| **Authentication**| JWT + bcrypt | Secure, httpOnly revocable refresh token rotation |
-| **File Uploads** | Multer + Cloudinary | Two-stage profile avatar uploads (Disk to Cloud CDN) |
-
-## 🔌 API & Socket Contract
+## API & Socket Contract
 
 ### REST API Endpoints (User Routes)
-
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/user/register` | ❌ | Register new user (with optional avatar upload) |
@@ -61,20 +123,24 @@ flowchart TD
 | `judge_result` | Server → Client | `{ verdict, executionTime }`| Streams sandboxed execution results back to the client |
 | `match_end` | Server → Client | `{ winnerId, newRating }` | Broadcasts final match result, draw conditions, and rating changes |
 
-## 🗄️ Database Schema & Connection Pooling
+---
+
+## Database & Connection Pooling
 
 Powered by serverless PostgreSQL (Neon DB). 
 
 **Connection Pooling:** Instead of opening and closing expensive, single connections for every API request, the backend implements a `pg.Pool`. This pool manages reusable connections to the database, massively increasing concurrent throughput. A 4-minute keep-alive ping prevents Neon DB from dropping idle connections.
 
-**Tables:**
-- **users:** `id`, `name`, `email`, `password` (bcrypt), `refresh_token`, `created_at`
-- **user_profiles:** `user_id`, `bio`, `elo_rating`, `battle_played`, `match_won`, `avatar_url`
-- **problems:** `id`, `title`, `description`, `difficulty`, `test_cases`, `starter_code`
-- **matches:** `id`, `player1_id`, `player2_id`, `winner_id`, `problem_id`, `played_at`
-- **submissions:** `id`, `match_id`, `user_id`, `code`, `language`, `result`
+**Tables Overview:**
+- **users:** Accounts and hashed credentials.
+- **user_profiles:** Bios, ELO ratings, and Cloudinary avatar URLs.
+- **problems:** Challenges, starter code, and hidden test cases.
+- **matches:** Match history, outcomes, and durations.
+- **submissions:** Individual code submission payloads and verdicts.
 
-## 🔐 Authentication & Security Flow
+---
+
+## Authentication & Security
 
 **1. JWT Token Rotation**
 Verifies bcrypt-hashed password and generates short-lived `access_token` (15m) and long-lived `refresh_token` (7d). Both are sent as secure `httpOnly` cookies.
@@ -85,22 +151,25 @@ The `refresh_token` itself is bcrypt-hashed before being saved to the database. 
 **3. Timing Attack Protection**
 During login, if a user's email does not exist, the backend still executes a dummy `bcrypt.compare()` operation. This guarantees that all login requests take the exact same amount of time, completely preventing attackers from enumerating valid emails by measuring response times.
 
-## 🏗️ Key Design Patterns
+---
+
+## Key Design Patterns
 
 ### 1. The `asyncHandler` Wrapper
 Rather than cluttering every controller with redundant `try/catch` blocks, a higher-order function `asyncHandler` wraps every route. Any rejected promise or thrown error is automatically caught and forwarded to the global error handler via `next(error)`.
 
 ### 2. Custom `ApiError` & Global Error Handler
-The native `Error` class is extended into `ApiError` to include HTTP `statusCode` and consistent payload formatting. The Express global error handler acts as a single source of truth at the end of the middleware chain, intercepting `next(error)` and returning a perfectly formatted `{ success, statusCode, message, errors }` JSON response.
+The native `Error` class is extended into `ApiError` to include HTTP `statusCode` and consistent payload formatting. The Express global error handler acts as a single source of truth at the end of the middleware chain, intercepting `next(error)` and returning a perfectly formatted JSON response.
 
 ### 3. Explicit Database Transactions
 Operations that insert into multiple tables simultaneously (like User Registration, which touches `users` and `user_profiles`) are wrapped in explicit database transactions (`BEGIN` and `COMMIT`). If any step fails, an automatic `ROLLBACK` guarantees atomic consistency, preventing orphaned profiles or corrupted records.
 
-## 🚀 Local Setup
+---
+
+## Local Setup
 
 **1. Install dependencies**
 ```bash
-cd Backend
 npm install
 ```
 
@@ -118,22 +187,14 @@ CLOUDINARY_API_SECRET="your_api_secret"
 PORT=4000
 ```
 
-**3. Start the Development Server**
+**3. Start the Backend Server**
 ```bash
+cd Backend
 npm run dev
 ```
 
-## 📁 Folder Structure
-
-```text
-Backend/
-├── src/
-│   ├── config/         # Database pooling & keep-alive logic
-│   ├── controller/     # Route handlers for REST endpoints
-│   ├── middleware/     # Auth and Multer file upload handling
-│   ├── routes/         # Express router definitions
-│   ├── dbmodel/        # TypeScript interfaces for DB tables
-│   ├── util/           # Custom error handlers, Cloudinary SDK, async wrappers
-│   ├── socket/         # Socket.IO handlers, Timers, and Matchmaking Logic
-│   └── app.ts          # Server entry point
+**4. Start the Frontend Application**
+```bash
+cd frontend
+npm run dev
 ```
