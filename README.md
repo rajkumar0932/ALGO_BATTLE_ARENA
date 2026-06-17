@@ -197,3 +197,13 @@ npm run dev
 cd frontend
 npm run dev
 ```
+
+---
+
+<div align="center">
+
+Built by **raj kumar gupta**
+
+⚔️ *Code. Battle. Conquer.*
+
+</div>

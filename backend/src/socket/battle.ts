@@ -18,6 +18,7 @@ export function setupBattle(io: Server, socket: Socket) {
     socket.on("battle:rejoin", async (payload: { battleId: string }) => {
         const { battleId } = payload;
         currentBattleId = battleId;
+        socket.join(battleId);
 
         // Clear any running disconnect timers for this user since they reconnected
         const timerKey = `${battleId}_${socket.data.userId}`;
@@ -77,12 +78,12 @@ export function setupBattle(io: Server, socket: Socket) {
 
                 b.remainingSec--;
                 // Broadcast timer update to everyone in the battle
-                io.emit("battle:tick", { battleId, remainingSec: b.remainingSec });
+                io.to(battleId).emit("battle:tick", { battleId, remainingSec: b.remainingSec });
 
                 if (b.remainingSec <= 0) {
                     clearInterval(interval);
                     b.phase = "COMPLETED";
-                    io.emit("battle:end", {
+                    io.to(battleId).emit("battle:end", {
                         result: {
                             battleId,
                             isDraw: true,
@@ -112,7 +113,7 @@ export function setupBattle(io: Server, socket: Socket) {
         }
 
         // 1. Tell both players someone submitted (to show "Judging...")
-        io.emit("battle:opponent_submitted", { battleId });
+        io.to(battleId).emit("battle:opponent_submitted", { battleId });
 
         // 2. Real Code Evaluation using Piston API!
         const result = await evaluateSubmission(payload.code, "javascript", battle.problemId);
@@ -130,7 +131,7 @@ export function setupBattle(io: Server, socket: Socket) {
         });
 
         // Tell the opponent what the verdict was
-        socket.broadcast.emit("battle:opponent_verdict", {
+        socket.to(battleId).emit("battle:opponent_verdict", {
             battleId,
             verdict: result.verdict
         });
@@ -148,7 +149,7 @@ export function setupBattle(io: Server, socket: Socket) {
             const p1NewRating = battle.player1.rating + (isP1Winner ? eloChange : -eloChange);
             const p2NewRating = battle.player2.rating + (isP1Winner ? -eloChange : eloChange);
 
-            io.emit("battle:end", {
+            io.to(battleId).emit("battle:end", {
                 result: {
                     battleId,
                     isDraw: false,
@@ -226,7 +227,7 @@ export function setupBattle(io: Server, socket: Socket) {
             const p1NewRating = b.player1.rating + (isP1Disconnected ? -eloChange : eloChange);
             const p2NewRating = b.player2.rating + (isP1Disconnected ? eloChange : -eloChange);
 
-            io.emit("battle:end", {
+            io.to(battleId).emit("battle:end", {
                 result: {
                     battleId,
                     isDraw: false,
