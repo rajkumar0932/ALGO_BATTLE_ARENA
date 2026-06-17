@@ -35,9 +35,9 @@ async function start() {
         const { setupSocket } = await import("./socket");
         setupSocket(io);
 
-        // 4. IMPORTANT: Call .listen() on the httpServer, NOT the app!
-        httpServer.listen(4000, () => {
-            console.log(`Server running on port 4000 (HTTP + WebSockets)`);
+        const PORT = process.env.PORT || 4000;
+        httpServer.listen(PORT, () => {
+            console.log(`Server running on port ${PORT} (HTTP + WebSockets)`);
         });
 
     } catch (err) {
