@@ -19,6 +19,12 @@
 
 *Get matched with an opponent, solve the same algorithm problem, and race to submit the best solution. Climb the ELO leaderboard and prove your skills.*
 
+<br/>
+
+### [🌍 Play Live Demo: algobattle.vercel.app](https://algobattle.vercel.app)
+
+<br/>
+
 </div>
 
 ---
