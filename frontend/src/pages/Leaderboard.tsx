@@ -6,18 +6,17 @@ import { useAuth } from "@/lib/auth";
 interface LeaderboardUser {
   id: string;
   username: string;
-  rating: number;
-  wins: number;
-  losses: number;
-  draws: number;
+  userrating: number;
+  winrate: string | number;
+  record: string;
 }
 
 const MOCK_USERS: LeaderboardUser[] = [
-  { id: "1", username: "CodeWarrior", rating: 2100, wins: 45, losses: 12, draws: 3 },
-  { id: "2", username: "AlgoMaster", rating: 1950, wins: 38, losses: 15, draws: 7 },
-  { id: "3", username: "ByteSlayer", rating: 1820, wins: 30, losses: 18, draws: 2 },
-  { id: "4", username: "NullPointer", rating: 1700, wins: 25, losses: 20, draws: 5 },
-  { id: "5", username: "RecursionKing", rating: 1650, wins: 22, losses: 22, draws: 6 },
+  { id: "1", username: "CodeWarrior", userrating: 2100, winrate: 78.9, record: "45-12" },
+  { id: "2", username: "AlgoMaster", userrating: 1950, winrate: 71.7, record: "38-15" },
+  { id: "3", username: "ByteSlayer", userrating: 1820, winrate: 62.5, record: "30-18" },
+  { id: "4", username: "NullPointer", userrating: 1700, winrate: 55.5, record: "25-20" },
+  { id: "5", username: "RecursionKing", userrating: 1650, winrate: 50.0, record: "22-22" },
 ];
 
 export default function Leaderboard() {
