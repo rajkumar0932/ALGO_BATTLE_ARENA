@@ -10,13 +10,13 @@ async function start() {
             const result = await pool.query("SELECT NOW()");
             console.log("Database Connected Successfully:", result.rows[0]);
         } catch (dbErr) {
-            console.error("Database connection check failed, but continuing server start:", dbErr.message);
+            console.error("Database connection check failed, but continuing server start:", dbErr);
         }
 
         try {
             await redisClient.connect();
         } catch (redisErr) {
-            console.error("Redis connection failed, continuing:", redisErr.message);
+            console.error("Redis connection failed, continuing:", redisErr);
         }
 
         // 1. Create HTTP server wrapping your Express app
