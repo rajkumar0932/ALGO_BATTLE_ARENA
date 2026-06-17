@@ -91,7 +91,7 @@ export async function evaluateSubmission(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: "javascript",
-        version: "18.15.0", // Piston API JS version
+        version: "*", // Use wildcard so Piston auto-selects the installed version
         files: [{ name: "main.js", content: wrappedCode }]
       })
     });
