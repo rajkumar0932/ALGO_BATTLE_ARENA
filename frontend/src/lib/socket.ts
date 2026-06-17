@@ -9,9 +9,9 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 let socket: TypedSocket | null = null;
 
 export function getSocket(): TypedSocket {
+  const token = localStorage.getItem("algobattle_token");
+  
   if (!socket) {
-    const token = localStorage.getItem("algobattle_token");
-
     socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
       autoConnect: false,
       transports: ["websocket", "polling"],
@@ -19,7 +19,11 @@ export function getSocket(): TypedSocket {
         token: token
       }
     });
+  } else {
+    // Dynamically update token in case the user just logged in
+    (socket.auth as any).token = token;
   }
+  
   return socket;
 }
 

@@ -35,7 +35,7 @@ export function Navbar() {
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
-  if (pathname.startsWith("/battle") || pathname === "/play/bot" || pathname === "/play/private") {
+  if (pathname.startsWith("/battle") || pathname === "/play/private") {
     return null;
   }
 

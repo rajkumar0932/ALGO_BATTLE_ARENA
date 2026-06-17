@@ -6,12 +6,18 @@ import { Server } from "socket.io";
 
 async function start() {
     try {
-        const result = await pool.query("SELECT NOW()");
+        try {
+            const result = await pool.query("SELECT NOW()");
+            console.log("Database Connected Successfully:", result.rows[0]);
+        } catch (dbErr) {
+            console.error("Database connection check failed, but continuing server start:", dbErr.message);
+        }
 
-        console.log("Database Connected");
-        console.log(result.rows[0]);
-
-        await redisClient.connect();
+        try {
+            await redisClient.connect();
+        } catch (redisErr) {
+            console.error("Redis connection failed, continuing:", redisErr.message);
+        }
 
         // 1. Create HTTP server wrapping your Express app
         const httpServer = http.createServer(app);

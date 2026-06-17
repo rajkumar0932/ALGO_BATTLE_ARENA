@@ -40,6 +40,9 @@ export function MatchmakingLobby({ user }: MatchmakingLobbyProps) {
     socket.on("lobby:matched", handleMatched);
 
     return () => {
+      // Always emit leave when unmounting so we don't leave ghosts in the queue.
+      // If we already matched, this is harmless as we've already been popped.
+      socket.emit("lobby:leave");
       socket.off("lobby:searching", handleSearching);
       socket.off("lobby:matched", handleMatched);
     };
@@ -122,6 +125,18 @@ export function MatchmakingLobby({ user }: MatchmakingLobbyProps) {
               </button>
             )}
           </div>
+          
+          {/* Allow user to go back if connection hangs */}
+          {!isConnected && !isSearching && (
+             <div className="mt-4">
+               <button 
+                 onClick={() => navigate('/dashboard')} 
+                 className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+               >
+                 ← Go back to Dashboard
+               </button>
+             </div>
+          )}
         </div>
       </div>
       

@@ -6,6 +6,7 @@ const AuthContext = createContext<AuthContextType>({
   status: "unauthenticated",
   signIn: async () => ({}),
   signOut: () => {},
+  updateUser: () => {},
 });
 
 const STORAGE_KEY = "algobattle_user";
@@ -95,8 +96,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const updateUser = useCallback((data: Partial<AuthUser>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updatedUser = { ...prev, ...data };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, status, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, status, signIn, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

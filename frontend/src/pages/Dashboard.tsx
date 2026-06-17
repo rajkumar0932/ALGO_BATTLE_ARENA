@@ -12,18 +12,6 @@ interface UserData {
   losses: number;
   draws: number;
   avatar_url?: string;
-  submissions: Array<{
-    id: string;
-    verdict: string;
-    passedCases: number;
-    totalCases: number;
-    submittedAt: string;
-    battle: {
-      problem: { title: string; slug: string; difficulty: string };
-      player1: { username: string };
-      player2?: { username: string };
-    };
-  }>;
 }
 
 export default function Dashboard() {
@@ -39,8 +27,7 @@ export default function Dashboard() {
       return;
     }
     if (status === "authenticated" && user) {
-      // Fetch user data from your API
-      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/${user.username}`, {
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/user/profile/${user.username}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("algobattle_token")}`,
         },
@@ -55,8 +42,7 @@ export default function Dashboard() {
                 wins: data.data.match_won ?? 0,
                 losses: (data.data.battle_played ?? 0) - (data.data.match_won ?? 0),
                 draws: 0,
-                avatar_url: data.data.avatar_url,
-                submissions: [] // Using empty array since matchHistory is a separate endpoint
+                avatar_url: data.data.avatar_url
              });
           }
           setLoading(false);
@@ -69,8 +55,7 @@ export default function Dashboard() {
             rating: user.rating ?? 1200,
             wins: 0,
             losses: 0,
-            draws: 0,
-            submissions: [],
+            draws: 0
           });
           setLoading(false);
         });
@@ -225,58 +210,6 @@ export default function Dashboard() {
               <p className="text-sm text-gray-400">Sharpen your skills</p>
             </div>
           </Link>
-        </div>
-
-        {/* Recent Battles */}
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)" }}>
-          <div className="p-6 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-            <h2 className="text-xl font-bold flex items-center gap-2 uppercase tracking-wide text-white" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>
-              <Clock className="w-5 h-5" style={{ color: "#00e5ff" }} />
-              Recent Battles
-            </h2>
-          </div>
-
-          {userData.submissions.length === 0 ? (
-            <div className="m-6 text-center flex flex-col items-center justify-center" style={{ border: "1px dashed rgba(0,229,255,0.1)", borderRadius: "8px", padding: "48px", background: "rgba(0,229,255,0.01)" }}>
-              <Swords className="w-12 h-12 text-[#00e5ff] mx-auto mb-4" style={{ filter: "drop-shadow(0 0 10px rgba(0,229,255,0.2))" }} />
-              <p className="mb-2 uppercase tracking-widest text-sm" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Chakra Petch', sans-serif" }}>No battles yet</p>
-              <p className="text-xs text-gray-500 font-mono">[ AWAITING DATA FROM TARGET ZONE ]</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-white/5">
-              {userData.submissions.map((submission) => {
-                const opponent =
-                  submission.battle.player1.username === userData.username
-                    ? submission.battle.player2?.username
-                    : submission.battle.player1.username;
-                const difficultyClass =
-                  submission.battle.problem.difficulty === "EASY" ? "badge-easy" :
-                  submission.battle.problem.difficulty === "MEDIUM" ? "badge-medium" : "badge-hard";
-                const verdictColor =
-                  submission.verdict === "ACCEPTED" ? "text-[#4ade80]" :
-                  submission.verdict === "PENDING" ? "text-gray-400" : "text-[#f43f5e]";
-
-                return (
-                  <div key={submission.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 justify-between transition-colors hover:bg-[rgba(255,255,255,0.02)]">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="font-medium text-gray-200">{submission.battle.problem.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={difficultyClass}>{submission.battle.problem.difficulty}</span>
-                          {opponent && <span className="text-xs text-gray-500">vs {opponent}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 sm:gap-6">
-                      <span className={`text-sm font-medium ${verdictColor}`}>{submission.verdict.replace(/_/g, " ")}</span>
-                      <span className="text-xs text-gray-500 font-mono">{submission.passedCases}/{submission.totalCases} cases</span>
-                      <span className="text-xs text-gray-500 font-mono">{new Date(submission.submittedAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
     </div>

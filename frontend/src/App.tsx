@@ -14,8 +14,7 @@ import Leaderboard from "@/pages/Leaderboard";
 import Play from "@/pages/Play";
 import ForgotPassword from "@/pages/ForgotPassword";
 import NotFound from "@/pages/NotFound";
-
-import PlayBot from "@/pages/PlayBot";
+import PlayPrivate from "@/pages/PlayPrivate";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,7 +42,7 @@ export default function App() {
             <Route path="/battle/:battleId" element={<BattleRoomPage />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/play" element={<Play />} />
-            <Route path="/play/bot" element={<PlayBot />} />
+            <Route path="/play/private" element={<PlayPrivate />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

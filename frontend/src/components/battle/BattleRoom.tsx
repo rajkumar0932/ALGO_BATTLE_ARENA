@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useBattle } from "@/hooks/useBattle";
+import { useAuth } from "@/lib/auth";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { BattleTimer } from "./BattleTimer";
 import { OpponentStatus } from "./OpponentStatus";
@@ -26,6 +27,8 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
     error,
     submitCode
   } = useBattle(battleId);
+
+  const { updateUser } = useAuth();
 
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("");
@@ -64,6 +67,17 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
       window.removeEventListener('battle:my_verdict', handleMyVerdict);
     };
   }, [battleState, code, currentUser.id]);
+
+  // Update the user's rating locally once the battle is over
+  useEffect(() => {
+    if (battleResult && battleState && updateUser) {
+      const amIP1 = battleState.player1.userId === currentUser.id;
+      const myNewRating = amIP1 ? battleResult.player1NewRating : battleResult.player2NewRating;
+      
+      // Update local storage and context so when we navigate to lobby, the new rating shows
+      updateUser({ rating: myNewRating });
+    }
+  }, [battleResult, battleState, currentUser.id, updateUser]);
 
   if (error) {
     return (
@@ -258,22 +272,22 @@ export function BattleRoom({ battleId, currentUser }: BattleRoomProps) {
           <div className="glass-card max-w-lg w-full p-8 text-center neon-border relative overflow-hidden">
             {/* Background effect based on win/loss/draw */}
             <div className={`absolute inset-0 opacity-10 pointer-events-none ${battleResult.isDraw ? "bg-gray-500" :
-              battleResult.winnerId === currentUser.id ? "bg-accent-emerald" : "bg-accent-rose"
+              String(battleResult.winnerId) === String(currentUser.id) ? "bg-accent-emerald" : "bg-accent-rose"
               }`} />
 
             <div className="relative z-10">
               <Trophy className={`w-16 h-16 mx-auto mb-6 ${battleResult.isDraw ? "text-gray-400" :
-                battleResult.winnerId === currentUser.id ? "text-accent-emerald drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "text-gray-600"
+                String(battleResult.winnerId) === String(currentUser.id) ? "text-accent-emerald drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "text-gray-600"
                 }`} />
 
               <h2 className="text-3xl font-black mb-2">
                 {battleResult.isDraw ? "It's a Draw!" :
-                  battleResult.winnerId === currentUser.id ? "Victory!" : "Defeat"}
+                  String(battleResult.winnerId) === String(currentUser.id) ? "Victory!" : "Defeat"}
               </h2>
 
               <p className="text-gray-400 mb-8">
                 {battleResult.reason === "ACCEPTED" ? (
-                  battleResult.winnerId === currentUser.id ? "You solved the problem first!" : `${battleResult.winnerUsername} solved the problem first.`
+                  String(battleResult.winnerId) === String(currentUser.id) ? "You solved the problem first!" : `${battleResult.winnerUsername} solved the problem first.`
                 ) : battleResult.reason === "BOTH_SUBMITTED" ? (
                   "Both players submitted without full correctness. Best score wins."
                 ) : battleResult.reason === "TIME_UP" ? (

@@ -15,4 +15,5 @@ export interface AuthContextType {
   status: AuthStatus;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => void;
+  updateUser?: (data: Partial<AuthUser>) => void;
 }

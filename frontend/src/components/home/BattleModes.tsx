@@ -48,37 +48,7 @@ export function BattleModes() {
             </Link>
           </ScrollReveal>
 
-          {/* Card 2 - vs AI Bot */}
-          <ScrollReveal delay={0.2} yOffset={30} className="h-full">
-            <Link to="/play/bot" className="glass-card p-8 rounded-2xl border border-border hover:border-accent-purple/40 shadow-[0_0_15px_rgba(168,85,247,0.05)] hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] transition-all duration-300 group relative overflow-hidden flex flex-col h-full bg-bg-card">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-purple/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-accent-purple/15 transition-all"></div>
-              
-              <div className="flex items-start justify-between mb-6">
-                <div className="w-14 h-14 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center relative">
-                  <Bot className="w-7 h-7 text-accent-purple" />
-                  <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-accent-purple animate-ping opacity-0 group-hover:opacity-100"></div>
-                </div>
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-accent-purple/10 text-accent-purple border border-accent-purple/20">
-                  Practice
-                </span>
-              </div>
-              
-              <h3 className="text-2xl font-bold text-gray-100 mb-4 group-hover:text-accent-purple transition-colors">vs AI Bot</h3>
-              
-              <ul className="space-y-3 mb-8 flex-1">
-                {["6 difficulty tiers", "Instant match generation", "No ELO pressure", "Post-battle AI review"].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-400">
-                    <Check className="w-4 h-4 text-accent-purple shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <div className="btn-secondary w-full text-center py-2.5 group-hover:border-accent-purple/50 group-hover:text-accent-purple transition-colors">
-                Select Difficulty →
-              </div>
-            </Link>
-          </ScrollReveal>
+
 
           {/* Card 3 - Private Room */}
           <ScrollReveal delay={0.3} yOffset={30} className="h-full">

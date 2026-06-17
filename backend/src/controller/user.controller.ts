@@ -393,38 +393,12 @@ const getUserprofile = asynchr(async (req: any, res: any) => {
     return res.status(200).json(new ApiResponse(200, profile, "User profile fetched"));
 });
 
-// ──────────────────────────────────────────────
-// GET /matchHistory — get battle history
-// ──────────────────────────────────────────────
-const getMatchHistory = asynchr(async (req: any, res: any) => {
-    const userId = req.user.id;
-
-    // Query match history from PostgreSQL with a JOIN on problems
-    const historyResult = await pool.query(
-        `SELECT m.id, m.player1_id, m.player2_id, m.winner_id, m.played_at,
-                p.title AS problem_title
-         FROM matches m
-         LEFT JOIN problems p ON m.problem_id = p.id
-         WHERE m.player1_id = $1 OR m.player2_id = $1
-         ORDER BY m.played_at DESC
-         LIMIT 10`,
-        [userId]
-    );
-
-    return res.status(200).json(
-        new ApiResponse(200, historyResult.rows, "Match history fetched")
-    );
-});
-
 export {
     registerUser,
     loginUser,
     logout,
     regenerateAccessToken,
     forgetPassword,
-
-
     updateProfileInfo,
-    getUserprofile,
-    getMatchHistory
+    getUserprofile
 };

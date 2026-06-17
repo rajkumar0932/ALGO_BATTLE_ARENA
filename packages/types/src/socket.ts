@@ -104,6 +104,10 @@ export interface ClientToServerEvents {
   "battle:submit": (payload: BattleSubmitPayload) => void;
   "battle:leave": (payload: { battleId: string }) => void;
   "battle:rejoin": (payload: BattleRejoinPayload) => void;
+
+  "room:create": (payload: LobbyJoinPayload) => void;
+  "room:join": (payload: LobbyJoinPayload, code: string) => void;
+  "room:leave": (code: string) => void;
 }
 
 /** Events the SERVER sends to the CLIENT */
@@ -120,6 +124,9 @@ export interface ServerToClientEvents {
   "battle:opponent_verdict": (payload: BattleOpponentVerdictPayload) => void;
   "battle:end": (payload: BattleEndPayload) => void;
   "battle:error": (payload: SocketErrorPayload) => void;
+
+  "room:created": (payload: { code: string }) => void;
+  "room:error": (payload: { message: string }) => void;
 }
 
 /** Inter-server events (not used for client, but typed for completeness) */

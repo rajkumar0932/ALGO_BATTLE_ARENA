@@ -27,7 +27,3 @@ LIMIT 5;
     return res.status(200).json(new ApiResponse(200, result.rows, "Battle data given"))
 });
 
-export const getBots = asynchr(async (req: Request, res: Response) => {
-    const Allbots = await pool.query(`SELECT * FROM bots`)
-    return res.status(201).json(new ApiResponse(201, Allbots.rows, "ALL BOTS GIVEN"));
-});

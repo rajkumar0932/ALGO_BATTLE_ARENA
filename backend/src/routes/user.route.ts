@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import { upload } from '../middleware/multer';
-import { registerUser, loginUser, getMatchHistory, logout, regenerateAccessToken, updateProfileInfo, getUserprofile, forgetPassword } from '../controller/user.controller';
+import { registerUser, loginUser, logout, regenerateAccessToken, updateProfileInfo, getUserprofile, forgetPassword } from '../controller/user.controller';
 import { AuthMiddleware } from '../middleware/Auth.middleware';
 const userRouter = Router();
 
@@ -32,9 +32,7 @@ userRouter.route('/updateProfile').patch(upload.fields([
         maxCount: 1
     },]),
     AuthMiddleware, updateProfileInfo);
-userRouter.route("/users/:username").get(AuthMiddleware,
-
+userRouter.route("/profile/:username").get(AuthMiddleware,
     getUserprofile);
-userRouter.route("/matchHistory/:username").get(AuthMiddleware, getMatchHistory)
 export default userRouter;
 

@@ -24,8 +24,12 @@ export function useBattle(battleId: string) {
 
     socket.emit("battle:rejoin", { battleId });
 
-    socket.on("battle:start", (payload: BattleStartPayload) => {
-      setBattleState(payload.battle);
+    socket.on("battle:start", (payload: any) => {
+      setBattleState({
+        ...payload.battle,
+        description: payload.description,
+        starterCode: payload.starterCode
+      });
       setRemainingSec(payload.battle.remainingSec);
     });
 

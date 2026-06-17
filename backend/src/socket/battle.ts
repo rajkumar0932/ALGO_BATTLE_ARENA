@@ -5,16 +5,27 @@ import { evaluateSubmission } from "../services/judge";
 // In-memory store for active battles and their timers
 export const activeBattles: Map<string, BattleState> = new Map();
 export const battleTimers: Map<string, NodeJS.Timeout> = new Map();
+export const disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
 
 export function createBattle(battle: BattleState) {
     activeBattles.set(battle.battleId, battle);
 }
 
 export function setupBattle(io: Server, socket: Socket) {
+    let currentBattleId: string | null = null;
 
     // When the frontend loads the battle page, it asks to rejoin/start
     socket.on("battle:rejoin", async (payload: { battleId: string }) => {
         const { battleId } = payload;
+        currentBattleId = battleId;
+
+        // Clear any running disconnect timers for this user since they reconnected
+        const timerKey = `${battleId}_${socket.data.userId}`;
+        if (disconnectTimers.has(timerKey)) {
+            clearTimeout(disconnectTimers.get(timerKey)!);
+            disconnectTimers.delete(timerKey);
+            console.log(`[Battle ${battleId}] User ${socket.data.userId} reconnected. Disconnect timer cleared.`);
+        }
 
         console.log(`[Battle ${battleId}] User ${socket.data.userId} joined the room`);
 
@@ -126,13 +137,16 @@ export function setupBattle(io: Server, socket: Socket) {
 
         // If they got it right, end the battle!
         if (result.verdict === "ACCEPTED") {
-            const isP1Winner = socket.data.userId === battle.player1.userId;
+            const isP1Winner = String(socket.data.userId) === String(battle.player1.userId);
             const winner = isP1Winner ? battle.player1 : battle.player2;
             const loser = isP1Winner ? battle.player2 : battle.player1;
 
             const diff = Math.abs(winner.rating - loser.rating);
             const cappedDiff = Math.min(diff, 3000); // "till 3000"
             const eloChange = 20 + Math.floor(Math.max(0, cappedDiff - 1) / 50) * 10;
+
+            const p1NewRating = battle.player1.rating + (isP1Winner ? eloChange : -eloChange);
+            const p2NewRating = battle.player2.rating + (isP1Winner ? -eloChange : eloChange);
 
             io.emit("battle:end", {
                 result: {
@@ -143,10 +157,31 @@ export function setupBattle(io: Server, socket: Socket) {
                     reason: "ACCEPTED",
                     player1EloChange: isP1Winner ? eloChange : -eloChange,
                     player2EloChange: isP1Winner ? -eloChange : eloChange,
-                    player1NewRating: battle.player1.rating + (isP1Winner ? eloChange : -eloChange),
-                    player2NewRating: battle.player2.rating + (isP1Winner ? -eloChange : eloChange)
+                    player1NewRating: p1NewRating,
+                    player2NewRating: p2NewRating
                 }
             });
+
+            // Update Database with new Elo and stats
+            try {
+                const { pool } = require("../config/db");
+                
+                // Update Winner
+                await pool.query(
+                    `UPDATE user_profiles SET elo_rating = $1, battle_played = battle_played + 1, match_won = match_won + 1 WHERE user_id = $2`,
+                    [isP1Winner ? p1NewRating : p2NewRating, winner.userId]
+                );
+
+                // Update Loser
+                await pool.query(
+                    `UPDATE user_profiles SET elo_rating = $1, battle_played = battle_played + 1 WHERE user_id = $2`,
+                    [isP1Winner ? p2NewRating : p1NewRating, loser.userId]
+                );
+                
+                console.log(`[Battle ${battleId}] Database updated with new Elo ratings`);
+            } catch (dbErr) {
+                console.error(`[Battle ${battleId}] Failed to update Elo in DB:`, dbErr);
+            }
 
             // Stop the countdown timer!
             if (battleTimers.has(battleId)) {
@@ -156,4 +191,83 @@ export function setupBattle(io: Server, socket: Socket) {
         }
     });
 
+    const handleDisconnectOrLeave = () => {
+        if (!currentBattleId) return;
+        const battleId = currentBattleId;
+        const battle = activeBattles.get(battleId);
+        
+        // If battle doesn't exist or is already completed, do nothing
+        if (!battle || battle.phase === "COMPLETED") return;
+
+        const userId = socket.data.userId;
+        const timerKey = `${battleId}_${userId}`;
+
+        // Don't start another timer if one is already running
+        if (disconnectTimers.has(timerKey)) return;
+
+        console.log(`[Battle ${battleId}] User ${userId} disconnected/left. Starting 10s forfeit timer...`);
+
+        const timerId = setTimeout(async () => {
+            const b = activeBattles.get(battleId);
+            // Verify battle is still active
+            if (!b || b.phase === "COMPLETED") return;
+
+            console.log(`[Battle ${battleId}] User ${userId} did not return within 10s. Forfeiting match.`);
+            b.phase = "COMPLETED";
+
+            const isP1Disconnected = String(userId) === String(b.player1.userId);
+            const winner = isP1Disconnected ? b.player2 : b.player1;
+            const loser = isP1Disconnected ? b.player1 : b.player2;
+
+            const diff = Math.abs(winner.rating - loser.rating);
+            const cappedDiff = Math.min(diff, 3000);
+            const eloChange = 20 + Math.floor(Math.max(0, cappedDiff - 1) / 50) * 10;
+
+            const p1NewRating = b.player1.rating + (isP1Disconnected ? -eloChange : eloChange);
+            const p2NewRating = b.player2.rating + (isP1Disconnected ? eloChange : -eloChange);
+
+            io.emit("battle:end", {
+                result: {
+                    battleId,
+                    isDraw: false,
+                    winnerId: winner.userId,
+                    winnerUsername: winner.username,
+                    reason: "OPPONENT_DISCONNECTED",
+                    player1EloChange: isP1Disconnected ? -eloChange : eloChange,
+                    player2EloChange: isP1Disconnected ? eloChange : -eloChange,
+                    player1NewRating: p1NewRating,
+                    player2NewRating: p2NewRating
+                }
+            });
+
+            try {
+                const { pool } = require("../config/db");
+                
+                // Update Winner
+                await pool.query(
+                    `UPDATE user_profiles SET elo_rating = $1, battle_played = battle_played + 1, match_won = match_won + 1 WHERE user_id = $2`,
+                    [isP1Disconnected ? p2NewRating : p1NewRating, winner.userId]
+                );
+
+                // Update Loser
+                await pool.query(
+                    `UPDATE user_profiles SET elo_rating = $1, battle_played = battle_played + 1 WHERE user_id = $2`,
+                    [isP1Disconnected ? p1NewRating : p2NewRating, loser.userId]
+                );
+            } catch (dbErr) {
+                console.error(`[Battle ${battleId}] Failed to update DB on disconnect forfeit:`, dbErr);
+            }
+
+            if (battleTimers.has(battleId)) {
+                clearInterval(battleTimers.get(battleId)!);
+                battleTimers.delete(battleId);
+            }
+            disconnectTimers.delete(timerKey);
+        }, 10000); // 10 seconds
+
+        disconnectTimers.set(timerKey, timerId);
+    };
+
+    socket.on("disconnect", handleDisconnectOrLeave);
+    socket.on("battle:leave", handleDisconnectOrLeave);
 }
