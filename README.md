@@ -48,7 +48,7 @@
 AlgoBattle Arena is a **real-time competitive programming platform** where developers go head-to-head in live 1v1 coding battles. Both players receive the same algorithmic challenge and race to submit a correct, efficient solution. The winner earns ELO rating points; the loser loses them. 
 
 The platform currently features two core experiences:
-1. **Ranked 1v1:** Skill-based matchmaking against real players with live WebSocket sync and shared timers.
+1. **Ranked 1v1:** Instant matchmaking against real players with live WebSocket sync and shared timers.
 2. **vs AI Bot:** Practice against offline AI bots at varying difficulty tiers.
 
 ---
@@ -56,7 +56,7 @@ The platform currently features two core experiences:
 ## Features
 
 ### Core Gameplay
-- **Live 1v1 Ranked Battles** — Real-time WebSocket matchmaking pairs you with a player of similar ELO. Both see the same problem simultaneously.
+- **Live 1v1 Ranked Battles** — Real-time WebSocket matchmaking instantly pairs you with an opponent. Both see the same problem simultaneously.
 - **Live Battle Status** — Socket.io ensures both players see opponent submission verdicts (e.g., Wrong Answer, Accepted) live during a match.
 
 ### Problem System
