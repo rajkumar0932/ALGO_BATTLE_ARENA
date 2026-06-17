@@ -51,7 +51,6 @@ The platform currently features two core experiences:
 
 ### Core Gameplay
 - **Live 1v1 Ranked Battles** — Real-time WebSocket matchmaking pairs you with a player of similar ELO. Both see the same problem simultaneously.
-- **AI Bot Battles** — Practice against AI bots of varying difficulties to hone your skills before playing ranked matches.
 - **Live Battle Status** — Socket.io ensures both players see opponent submission verdicts (e.g., Wrong Answer, Accepted) live during a match.
 
 ### Problem System
@@ -78,7 +77,7 @@ The platform currently features two core experiences:
 | **Code Execution**| Piston API (Docker) | Secure, sandboxed multi-language execution hosted on AWS EC2 |
 | **Authentication**| Custom JWT + bcrypt | Secure, httpOnly revocable refresh token rotation |
 | **File Uploads** | Multer + Cloudinary | Two-stage profile avatar uploads (Disk to Cloud CDN) |
-| **Monorepo** | Turborepo | Parallel builds and task orchestration |
+
 
 ---
 
