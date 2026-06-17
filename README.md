@@ -21,7 +21,7 @@
 
 <br/>
 
-### [🌍 Play Live Demo: algobattle.vercel.app](https://algobattle.vercel.app)
+### [🌍 Play Live Demo: algo-battle-arena-frontend.vercel.app](https://algo-battle-arena-frontend.vercel.app/)
 
 <br/>
 
