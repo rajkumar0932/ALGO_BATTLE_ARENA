@@ -165,6 +165,31 @@ Operations that insert into multiple tables simultaneously (like User Registrati
 
 ---
 
+## Deployment Architecture
+
+The platform is designed to be deployed across specialized cloud infrastructure for maximum performance and real-time reliability:
+
+- **Frontend Client:** Deployed globally on **Vercel** for fast edge delivery.
+- **Backend / Socket Server:** Deployed on **Render** (or Railway) as a persistent Node.js background process. Serverless platforms (like Vercel functions) drop long-lived WebSocket connections, so a dedicated runtime is required.
+- **Database:** Hosted on **Neon DB** (Serverless PostgreSQL).
+- **Matchmaking / PubSub:** Hosted on **Upstash** (Serverless Redis).
+- **Execution Sandbox:** The Piston API runs inside isolated Docker containers on a dedicated **AWS EC2** instance to prevent arbitrary code execution attacks on the main server.
+
+---
+
+## Future Improvements
+
+While this MVP is fully functional, here is the roadmap for scaling it to a production-grade system:
+
+1. **API Rate Limiting:** Implement `express-rate-limit` to protect auth routes from brute-force dictionary attacks.
+2. **Schema Validation:** Replace manual `if/else` body checks with strict `Zod` schema validation for all incoming API payloads.
+3. **Cursor-based Pagination:** The problem listing currently uses `LIMIT / OFFSET` which degrades performance on massive tables. Transition to cursor-based `WHERE id > lastId` pagination.
+4. **Redis Caching:** Cache the global leaderboard and static problem descriptions in Redis to significantly reduce Postgres load during peak traffic.
+5. **Horizontal Scaling for Sockets:** The `activeBattles` are currently stored in a local JavaScript `Map`. To scale horizontally across multiple backend servers behind a load balancer, this state must be migrated into a Redis Hash.
+6. **Integration Testing:** Implement a full test suite using `Jest` and `Supertest` to automate CI/CD pipeline validation.
+
+---
+
 ## Local Setup
 
 **1. Install dependencies**
