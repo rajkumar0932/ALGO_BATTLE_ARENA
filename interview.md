@@ -882,3 +882,237 @@ $ pnpm build  (which runs "turbo build")
 ### Q: Can you deploy the frontend and backend separately from a monorepo?
 > "Absolutely. Each workspace has its own `package.json` and build script. Vercel deploys the frontend by setting the Root Directory to `frontend/`. Render deploys the backend by setting the Root Directory to `backend/`. They are independently deployable — the monorepo is a development-time convenience for shared types and unified tooling, not a deployment constraint."
 
+---
+
+## 21. 100 Probable Interview Questions (Backend Focus)
+
+These questions are organized from "tell me about your project" intro-level all the way to deep grilling. Every question is rooted in the actual codebase.
+
+---
+
+### A. PROJECT OVERVIEW & WALKTHROUGH (Q1–Q15)
+
+**Q1.** Tell me about your project. What does it do and why did you build it?
+
+**Q2.** Walk me through the complete architecture — how does a request flow from the user's browser to the database and back?
+
+**Q3.** What are the core features of the platform?
+
+**Q4.** Why did you choose to build this as a real-time application instead of a standard CRUD app?
+
+**Q5.** Describe your tech stack. Why did you pick each technology?
+
+**Q6.** Why Node.js + Express for the backend instead of Django, Spring Boot, or Go?
+
+**Q7.** How is this project structured? Walk me through the folder layout.
+
+**Q8.** What is the difference between your `app.ts` and `index.ts` files? Why did you separate them?
+
+**Q9.** What was the most challenging part of building this backend?
+
+**Q10.** What would you do differently if you started this project from scratch today?
+
+**Q11.** How did you decide which features to prioritize for the MVP?
+
+**Q12.** How many users can your system handle concurrently right now? What is the bottleneck?
+
+**Q13.** Is this project deployed? Walk me through your deployment architecture.
+
+**Q14.** Why did you deploy the backend on Render instead of Vercel?
+
+**Q15.** What is the role of Docker in your project?
+
+---
+
+### B. AUTHENTICATION & SECURITY (Q16–Q35)
+
+**Q16.** Walk me through your entire authentication flow from registration to login to logout.
+
+**Q17.** Why did you use JWT instead of session-based authentication?
+
+**Q18.** What is the difference between your Access Token and Refresh Token? Why do you need both?
+
+**Q19.** Why is the Access Token short-lived (15 min) while the Refresh Token is long-lived (7 days)?
+
+**Q20.** Explain what happens step by step when the Access Token expires.
+
+**Q21.** Why do you hash the Refresh Token with bcrypt before storing it in the database?
+
+**Q22.** What is Token Rotation and why did you implement it?
+
+**Q23.** If an attacker steals a Refresh Token, how does your system detect it?
+
+**Q24.** What is a Timing Attack and how did you prevent it in your login endpoint?
+
+**Q25.** In your login code, what is the purpose of the `DUMMY_HASH` constant?
+
+**Q26.** Why do you return the same "Invalid credentials" error message for both wrong email and wrong password?
+
+**Q27.** What does `httpOnly: true` on a cookie do? Why is it important?
+
+**Q28.** What does `secure: true` on a cookie do?
+
+**Q29.** How does your Auth Middleware work? Walk me through the code.
+
+**Q30.** Your Auth Middleware extracts the token from three places (cookies, Authorization header, body). Why?
+
+**Q31.** What happens if someone sends a forged JWT token to your API?
+
+**Q32.** Why do you use `bcrypt.hash(password, 10)`? What does the `10` mean?
+
+**Q33.** What would happen if you stored passwords in plain text?
+
+**Q34.** How do you handle CORS? What is `allowedOrigins` doing in your app.ts?
+
+**Q35.** What is CSRF and does your system protect against it?
+
+---
+
+### C. DATABASE & RAW SQL (Q36–Q55)
+
+**Q36.** Why did you choose raw SQL with `pg` instead of an ORM like Prisma or Sequelize?
+
+**Q37.** What is a Connection Pool? Why do you use `pg.Pool` instead of a single `pg.Client`?
+
+**Q38.** Explain the keep-alive ping in your `db.ts`. Why does it run every 4 minutes?
+
+**Q39.** What is a parameterized query? Why do you use `$1, $2` placeholders instead of string concatenation?
+
+**Q40.** How does your parameterized query prevent SQL injection?
+
+**Q41.** Walk me through the registration flow step by step — what SQL runs?
+
+**Q42.** Why do you use a Database Transaction (BEGIN / COMMIT / ROLLBACK) during registration?
+
+**Q43.** What would happen if the `user_profiles` INSERT fails but the `users` INSERT already succeeded — without a transaction?
+
+**Q44.** In your transaction code, why do you use `client.query` instead of `pool.query`?
+
+**Q45.** What does `client.release()` do in the `finally` block? What happens if you forget it?
+
+**Q46.** Explain the `LEFT JOIN` in your `getUserprofile` query. Why not `INNER JOIN`?
+
+**Q47.** What is `COALESCE` and how did you use it in your `updateProfile` query?
+
+**Q48.** In your problem listing, how does the dynamic query builder work? How do you add filters safely?
+
+**Q49.** What is `ILIKE` and how is it different from `LIKE`?
+
+**Q50.** Explain how your pagination works with `LIMIT` and `OFFSET`. What are the performance drawbacks of OFFSET pagination on large tables?
+
+**Q51.** In your leaderboard query, what does `NULLIF(matches, 0)` do? Why is it necessary?
+
+**Q52.** What is a CTE (`WITH combinerow AS (...)`)?  Why did you use one in the leaderboard query?
+
+**Q53.** Your leaderboard query has correlated subqueries (`SELECT COUNT(*) FROM matches WHERE ...`). How would you optimize this for 1 million users?
+
+**Q54.** Why is your `problems` table storing `test_cases` as JSONB instead of a separate `test_cases` table?
+
+**Q55.** Your `starter_code` column stores a JSON object keyed by language. What are the pros and cons of this design?
+
+---
+
+### D. REAL-TIME WEBSOCKETS (Q56–Q75)
+
+**Q56.** Why did you use Socket.IO instead of plain WebSockets?
+
+**Q57.** How did you attach Socket.IO to the same Express HTTP server? Why is this important?
+
+**Q58.** Walk me through your WebSocket authentication middleware. Why can't you use HTTP headers for WebSocket auth?
+
+**Q59.** What is `socket.handshake.auth.token`? Where does the frontend set it?
+
+**Q60.** What is `socket.data.userId`? Why do you store the userId there?
+
+**Q61.** In `socket/index.ts`, you call `socket.join(socket.data.userId)`. Why?
+
+**Q62.** What is the difference between `io.emit()`, `io.to(room).emit()`, `socket.emit()`, and `socket.to(room).emit()`?
+
+**Q63.** Your battle.ts previously used `io.emit()` for everything. What bug did this cause and how did you fix it?
+
+**Q64.** Walk me through the full matchmaking flow — from "Find Battle" click to battle start.
+
+**Q65.** How does your Redis matchmaking queue work? Explain `LPOP`, `RPUSH`, and `LREM`.
+
+**Q66.** What happens if a user clicks "Find Battle" twice rapidly? How do you prevent self-matching?
+
+**Q67.** What happens if a user closes their browser while in the matchmaking queue?
+
+**Q68.** How do you select which problem to give the matched players?
+
+**Q69.** Explain the `BattleState` interface. Why is it the "single source of truth"?
+
+**Q70.** Your `activeBattles` is a JavaScript `Map`. What happens if the server restarts mid-battle?
+
+**Q71.** Since Node.js is single-threaded, how can it handle hundreds of battles concurrently?
+
+**Q72.** Walk me through your countdown timer logic. How does `setInterval` broadcast ticks?
+
+**Q73.** How do you prevent memory leaks from orphaned `setInterval` timers?
+
+**Q74.** Explain the disconnect/forfeit logic. What happens when a player's WiFi drops mid-battle?
+
+**Q75.** Why is the disconnect forfeit timer 10 seconds? What if a player legitimately loses connection for 15 seconds?
+
+---
+
+### E. CODE EXECUTION & JUDGE ENGINE (Q76–Q90)
+
+**Q76.** How does your code judge engine evaluate user submissions?
+
+**Q77.** Walk me through the `buildJavascriptWrapper` function. What does the generated code look like?
+
+**Q78.** Why do you use `JSON.stringify()` to compare outputs instead of `===`?
+
+**Q79.** How do you extract the function name from the starter code? What regex do you use?
+
+**Q80.** What is the Piston API? Why do you use it instead of running `eval()` directly on the backend?
+
+**Q81.** What would happen if you executed user code directly on your Express server without a sandbox?
+
+**Q82.** Your `docker-compose.yml` sets `privileged: true` for the Piston container. What does privileged mode mean?
+
+**Q83.** Why do you host your own Piston container on AWS EC2 instead of using the free public API?
+
+**Q84.** What is the fallback mechanism in your judge code if `PISTON_URL` is not set?
+
+**Q85.** How do you determine the verdict — ACCEPTED, WRONG_ANSWER, or RUNTIME_ERROR?
+
+**Q86.** What happens if a user submits an infinite loop like `while(true){}`?
+
+**Q87.** Your test cases are embedded into the executed file. Can a user `console.log` them to cheat? How would you fix this?
+
+**Q88.** Currently your judge only supports JavaScript. How would you add Python support?
+
+**Q89.** What is the `version: "*"` field in the Piston API request?
+
+**Q90.** How do you measure execution time? Is your measurement accurate?
+
+---
+
+### F. ELO RATING SYSTEM (Q91–Q95)
+
+**Q91.** Explain your ELO rating formula. How does it decide how many points to award?
+
+**Q92.** Does beating a higher-rated player give you more points than beating a lower-rated player in your formula?
+
+**Q93.** What happens to ELO ratings when a match ends in a draw (time runs out)?
+
+**Q94.** Can a player's ELO go negative in your system?
+
+**Q95.** Your ELO updates are not wrapped in a transaction. What race condition could this cause if two battles finish simultaneously for the same player?
+
+---
+
+### G. DESIGN PATTERNS & ERROR HANDLING (Q96–Q100)
+
+**Q96.** Explain the `asyncHandler` higher-order function. Why is it necessary?
+
+**Q97.** What is your `ApiError` class? Why did you extend the native `Error`?
+
+**Q98.** How does your global error handler middleware work? Why must it be the last `app.use()` call?
+
+**Q99.** In Express, how does it distinguish between a regular middleware and an error-handling middleware?
+
+**Q100.** What is the `ApiResponse` class? Why did you standardize all API responses into a consistent format?
+
