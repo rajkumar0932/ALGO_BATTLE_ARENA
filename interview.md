@@ -682,3 +682,203 @@ Without this flag, Piston does not have the authority to build its internal jail
 > However, because JavaScript technically allows you to throw any primitive type (like `throw 5` or `throw "string"`), modern, strict TypeScript marks the caught variable as `unknown` to prevent runtime crashes. When the CI/CD pipeline on Render compiled the backend in strict mode, it threw a type error because a number or string wouldn't have a `.message` property. 
 > 
 > To fix this, I refactored the error handling to simply log the raw `err` object directly instead of assuming it had a `.message` property. This satisfied the strict type checker and allowed the production build to succeed securely."
+
+---
+
+## 20. Monorepo, pnpm Workspaces & Turborepo — From Scratch
+
+### 20.1 The Problem: Why Does a "Monorepo" Exist?
+
+Imagine you are building AlgoBattle Arena. You have two completely separate applications:
+1. A **frontend** (React + Vite)
+2. A **backend** (Express + Socket.IO)
+
+The naive approach is to create two separate GitHub repositories:
+```
+github.com/rajkumar/algobattle-frontend   ← separate repo
+github.com/rajkumar/algobattle-backend    ← separate repo
+```
+
+This works for a while, but the moment both apps need to share something — like TypeScript type definitions for a `BattleState` or a `SocketEvent` — you hit a wall:
+- Do you copy-paste the types into both repos? (Duplication → they'll go out of sync)
+- Do you publish a private npm package? (Massive overkill and overhead for 1 developer)
+- Do you use Git submodules? (Nightmare to manage)
+
+**A Monorepo solves this** by putting everything into a single repository:
+```
+github.com/rajkumar/algobattle
+├── frontend/        ← App 1
+├── backend/         ← App 2
+└── packages/types/  ← Shared code, imported by BOTH apps
+```
+
+Now both apps live side by side. They share the same Git history, the same CI/CD pipeline, and — most importantly — they can directly import shared code from `packages/types/` without publishing anything to npm.
+
+> **Interview Answer:** "A monorepo is a single repository that contains multiple related projects. I chose this pattern because my frontend and backend needed to share TypeScript type definitions. Instead of maintaining separate repos and syncing types manually (which causes drift and bugs), a monorepo lets both apps import from a shared `packages/types` directory. When I change a type in one place, both sides see the change instantly with zero publishing overhead."
+
+### 20.2 What is pnpm? How is it different from npm?
+
+**npm** is the default Node.js package manager. When you run `npm install` in a project, it creates a `node_modules/` folder and dumps every dependency (and their dependencies, and *their* dependencies...) into it.
+
+**pnpm** (Performant npm) does the exact same job — it installs packages — but with two critical improvements:
+
+**1. It saves disk space using a global content-addressable store.**
+When you use npm, if 5 projects all depend on `express@4.18.2`, npm downloads and stores 5 separate copies of Express (one in each project's `node_modules/`). That's a massive waste of disk space.
+
+pnpm downloads Express only **once** to a global store on your hard drive (like `~/.pnpm-store/`). In each project's `node_modules/`, it creates **hard links** (think of them like shortcuts) pointing back to that single stored copy. 5 projects, 1 copy of Express.
+
+**2. It natively supports "Workspaces" for monorepos.**
+This is the killer feature for us. pnpm can manage multiple `package.json` files (multiple sub-projects) from a single root. More on this below.
+
+> **Interview Answer:** "I used pnpm over npm because of its workspace support for my monorepo and its disk efficiency. pnpm uses a content-addressable store where each package version is downloaded exactly once globally. Projects reference packages via hard links instead of duplicating them. In a monorepo with a frontend, backend, and shared package, this saves significant disk space and install time."
+
+### 20.3 pnpm Workspaces — How Our Monorepo is Wired
+
+The magic file that turns our single repo into a monorepo is `pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - "frontend"
+  - "packages/*"
+  - "backend"
+```
+
+This file tells pnpm: *"This repo contains 3 separate sub-projects (called workspaces). Each one has its own `package.json` with its own dependencies."*
+
+After declaring this, here's what pnpm does differently:
+
+**Single install, multiple projects:**
+When you run `pnpm install` at the root, pnpm walks into `frontend/package.json`, `backend/package.json`, and `packages/types/package.json`, reads ALL of their dependencies, and installs everything in one shot. You never need to `cd frontend && npm install` separately.
+
+**Cross-workspace imports with `workspace:*`:**
+In our project, the frontend's `package.json` contains:
+```json
+"dependencies": {
+  "@algobattle/types": "workspace:*"
+}
+```
+
+That `workspace:*` is the key. It tells pnpm: *"Don't go to the npm registry to download this package. This package already exists right here in our monorepo — it's the `packages/types/` folder. Link directly to it."*
+
+Now the frontend can do:
+```typescript
+import { BattleState, BattleResult } from "@algobattle/types";
+```
+
+And TypeScript resolves that import directly to `packages/types/src/index.ts` — which barrel-exports everything:
+```typescript
+export * from "./battle";
+export * from "./socket";
+export * from "./judge";
+export * from "./bot";
+export * from "./room";
+```
+
+**The result:** The frontend gets full type safety and autocomplete for all battle/socket types, and both apps are guaranteed to use the **exact same** type definitions at all times.
+
+> **Interview Answer:** "The `pnpm-workspace.yaml` file declares all the sub-projects in the monorepo. When I run `pnpm install` at the root, it installs dependencies for all workspaces in one pass. The `workspace:*` protocol in the frontend's `package.json` tells pnpm to resolve `@algobattle/types` from the local `packages/types/` directory instead of the npm registry. This gives us zero-latency, zero-drift type sharing between frontend and backend."
+
+### 20.4 Turborepo — The Task Orchestrator
+
+pnpm workspaces handle **installing packages**. But who handles **running scripts** across multiple projects?
+
+That's Turborepo. It's a build system that sits on top of pnpm workspaces and intelligently runs tasks across all your sub-projects.
+
+Our root `package.json` has:
+```json
+"scripts": {
+  "dev": "turbo dev",
+  "build": "turbo build"
+}
+```
+
+And `turbo.json` defines *how* those tasks should run:
+```json
+{
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+**What `turbo dev` does:**
+1. Scans all 3 workspaces for a `dev` script in their `package.json`.
+2. Finds `frontend → vite --port 3000` and `backend → tsx watch src/index.ts`.
+3. Runs them **in parallel** in a single terminal. One command starts everything.
+
+**What `turbo build` does:**
+1. Looks at the `"dependsOn": ["^build"]` rule.
+2. The `^` means: *"Before building an app, first build all of its dependencies."*
+3. So Turborepo builds `packages/types` **first** (because frontend depends on it), then builds `frontend` and `backend` in parallel **after**.
+4. It **caches** the build output (`dist/**`). If you run `turbo build` again and nothing changed in `packages/types`, it skips rebuilding it entirely and serves the cached result. This massively speeds up CI/CD pipelines.
+
+**The `"persistent": true` flag:**
+Dev servers never "finish" — they run forever until you kill them. The `persistent: true` flag tells Turborepo: *"This task is a long-running process, don't wait for it to exit before considering the pipeline done."*
+
+> **Interview Answer:** "Turborepo is a monorepo build orchestrator. It understands the dependency graph between my workspaces. When I run `turbo build`, it builds the shared `types` package first (because the frontend depends on it), then builds the frontend and backend in parallel. It also caches build outputs — if a package hasn't changed, Turborepo skips rebuilding it entirely. For `turbo dev`, it starts all dev servers in parallel with a single command."
+
+### 20.5 The Complete Flow — How It All Fits Together
+
+```
+Step 1: Clone the repo
+$ git clone github.com/rajkumar/algobattle
+$ cd algobattle
+
+Step 2: Single install
+$ pnpm install
+   → reads pnpm-workspace.yaml
+   → installs frontend deps (react, vite, socket.io-client, @algobattle/types → linked locally)
+   → installs backend deps (express, pg, redis, socket.io)
+   → installs packages/types deps (typescript)
+
+Step 3: Single dev command
+$ pnpm dev    (which runs "turbo dev")
+   → Turborepo starts frontend (Vite on port 3000) in parallel
+   → Turborepo starts backend (tsx watch on port 4000) in parallel
+   → Both are running simultaneously in one terminal
+
+Step 4: Build for production
+$ pnpm build  (which runs "turbo build")
+   → Turborepo builds packages/types FIRST (dependency)
+   → Then builds frontend (vite build) and backend (tsc) in PARALLEL
+   → Caches the output for next time
+```
+
+### 20.6 Interview Questions — How They'll Grill You
+
+### Q: Why did you use a monorepo instead of separate repositories?
+> "My frontend and backend share TypeScript type definitions for battles, socket events, and judge results. With separate repos, those types would inevitably go out of sync — the frontend expects a `BattleState` with field X, but the backend sends field Y. A monorepo with a shared `packages/types` directory guarantees both sides always use the exact same interface definitions. One change, zero drift."
+
+### Q: Why pnpm over npm or yarn?
+> "Three reasons:
+> 1. **Workspace support** — pnpm natively supports monorepo workspaces via `pnpm-workspace.yaml`. A single `pnpm install` at the root installs dependencies for all sub-projects.
+> 2. **Disk efficiency** — pnpm uses a content-addressable store. If React is used by both frontend and another package, it's stored once on disk and hard-linked. npm would duplicate it.
+> 3. **Strict dependency isolation** — pnpm creates a stricter `node_modules` structure that prevents a sub-project from accidentally importing a package it didn't declare in its own `package.json`. npm's flat hoisting allows this, which causes 'phantom dependency' bugs."
+
+### Q: What does `workspace:*` mean in the package.json?
+> "The `workspace:*` protocol tells pnpm to resolve this dependency from within the monorepo itself, not from the npm registry. In our case, `@algobattle/types` is not a published npm package — it's a folder at `packages/types/`. The `*` means 'use whatever version is in the workspace.' pnpm creates a symlink from `frontend/node_modules/@algobattle/types` directly to `packages/types/`, so any changes to the types package are reflected instantly without reinstalling."
+
+### Q: What is Turborepo and why do you need it if you already have pnpm workspaces?
+> "pnpm workspaces handle *installing* dependencies across sub-projects. Turborepo handles *running tasks* (like `dev`, `build`, `lint`) across sub-projects. Turborepo understands the dependency graph — it knows the frontend depends on `@algobattle/types`, so during `turbo build`, it builds the types package first, then the frontend. It also caches build outputs, so unchanged packages aren't rebuilt. Without Turborepo, I would have to manually figure out the build order and run scripts in each directory by hand."
+
+### Q: What does `"dependsOn": ["^build"]` mean in turbo.json?
+> "The `^` prefix means 'first build all upstream dependencies in the dependency graph.' When I run `turbo build`, Turborepo sees that the frontend's `package.json` lists `@algobattle/types` as a dependency. The `^build` rule means: build `packages/types` first, then build the frontend. Without the `^`, Turborepo would try to build them in parallel, and the frontend build would fail because the types it imports haven't been compiled yet."
+
+### Q: If your `packages/types` doesn't have a `dev` script, what happens when you run `turbo dev`?
+> "Turborepo simply skips it. It only runs the `dev` task on workspaces that actually have a `dev` script defined in their `package.json`. In our case, only `frontend` (vite) and `backend` (tsx watch) have dev scripts, so only those two start. The types package has no dev server — it's just raw TypeScript files that are imported directly."
+
+### Q: What is a 'phantom dependency' and how does pnpm prevent it?
+> "In npm, all dependencies are hoisted to a single flat `node_modules/` directory. This means your code can accidentally `import` a package that you never declared in your `package.json` — it just happens to be there because some other dependency installed it. This is called a 'phantom dependency.' It works on your machine but crashes on someone else's machine (or in CI) where that transitive dependency might not be hoisted.
+>
+> pnpm uses a non-flat `node_modules/` structure with symlinks. Each package can only see the dependencies it explicitly declared. If I try to import a package I didn't list in my `package.json`, the import fails immediately, catching the bug early."
+
+### Q: Can you deploy the frontend and backend separately from a monorepo?
+> "Absolutely. Each workspace has its own `package.json` and build script. Vercel deploys the frontend by setting the Root Directory to `frontend/`. Render deploys the backend by setting the Root Directory to `backend/`. They are independently deployable — the monorepo is a development-time convenience for shared types and unified tooling, not a deployment constraint."
+
