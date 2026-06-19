@@ -31,6 +31,7 @@
 
 ## Table of Contents
 
+- [Why ALGO_BATTLE_ARENA Exists](#why-algo_battle_arena-exists)
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -40,6 +41,58 @@
 - [Authentication & Security](#authentication--security)
 - [Key Design Patterns](#key-design-patterns)
 - [Local Setup](#local-setup)
+
+---
+
+## Why ALGO_BATTLE_ARENA Exists
+
+### The Problem
+
+DSA preparation is broken in two specific ways that nobody has fixed at the consumer level.
+
+**Mass competition is intimidating for beginners.**
+Platforms like LeetCode and Codeforces put you on a global leaderboard against thousands of people who are better than you. For a beginner, that's not motivating — it's demoralising. The gap between where you are and where the top users are is so visible and so large that most people quietly stop logging in.
+
+**Coding alone is monotonous.**
+There is no social hook in DSA prep. You solve a problem, you see a green tick, you move on. There is no rivalry, no shared moment, no reason to come back tomorrow because your friend beat you today. Chess was considered a niche intellectual hobby for decades — Chess.com turned it into a daily habit for 100 million people not by making chess easier, but by making it **social**. The 1v1 format changed everything. DSA prep has never had that.
+
+---
+
+### The Solution
+
+**1v1 battles between friends, not mass competition.**
+
+The core insight is that rivalry between two people who know each other is a fundamentally different psychological experience than competing against a global leaderboard. When your friend beats you, you practice tonight. When a stranger ranked 4,000 places above you beats you, you close the tab.
+
+ALGO_BATTLE_ARENA is built around that insight:
+
+- **Custom rooms via shareable code** — one friend creates a room, shares a code over WhatsApp, the other joins. No platform population dependency. Two people is enough. The platform grows through existing social graphs, not through matchmaking queues.
+- **Ranked matchmaking** — for when you want a competitive opponent outside your friend group.
+- **No intimidating leaderboard** — the focus is the match in front of you, not where you rank globally.
+
+---
+
+### The Offline Problem — Bot Tiers *(In Development)*
+
+Custom rooms solve the cold start problem when your friends are available. They don't solve the problem of practising alone.
+
+The planned solution is a **12-tier bot system** modelled on recognisable competitive programming avatars — from beginner tier up through archetypes familiar to the competitive coding community. Each bot tier is calibrated to:
+
+- **Solve at human speed**, not instant machine speed — so the race feels real
+- **Make human-characteristic errors** — wrong approach attempts, backtracking, resubmissions — so the opponent feels like a person, not a perfect machine
+- **Map to a named, recognisable avatar** — so beating a tier means something to someone who knows the competitive programming world
+
+The goal is the same loop Chess.com built: when no friend is online, you play a bot. You climb the tiers. You have a progression system that keeps you coming back even when you're practicing alone.
+
+The initial implementation will be rule-based — calibrated time delays and error-rate probabilities per tier. The full model fine-tuning comes later, once real user game data exists to train on. That's the correct order: ship the feature, accumulate data, improve the model.
+
+---
+
+### The Market Gap
+
+Chess.com proved this model works at massive scale. The DSA equivalent — 1v1 rivalry, bot progression, social growth through friend graphs — does not exist at the consumer level. LeetCode, Codeforces, and Coding Ninjas are all built around mass competition and solo grinding. None of them have cracked the social + rivalry + progression loop.
+
+That's the gap ALGO_BATTLE_ARENA is built to fill.
 
 ---
 

@@ -7,6 +7,8 @@ import { pool } from "../config/db";
 import { ApiResponse } from "../util/customresponse";
 
 export const AuthMiddleware = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+   // return res.status(102).json(new ApiResponse(200, req.body.accessToken, "Profile updated successfully"));
+
     try {
         const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "") || req.body.accessToken;
         console.log("access token in middleware", accessToken);
@@ -25,17 +27,19 @@ export const AuthMiddleware = asyncHandler(async (req: Request, res: Response, n
     FROM users
     WHERE id = $1
     `,
-            [(decodedToken as any).id as number] // FIXED _id to id
+            [(decodedToken as any)._id as number]
         );
 
         const user = result.rows[0];
         // console.log("decoded token", decodedToken);
         if (!user) {
             throw new ApiError(401, "Wrong Access token")
+
         }
         (req as any).user = user;
         next();
     } catch (error) {
         throw new ApiError(401, "Invalid access token auth")
+
     }
-});
+})
