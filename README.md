@@ -102,7 +102,7 @@ AlgoBattle Arena is a **real-time competitive programming platform** where devel
 
 The platform currently features two core experiences:
 1. **Ranked 1v1:** Instant matchmaking against real players with live WebSocket sync and shared timers.
-2. **vs AI Bot:** Practice against offline AI bots at varying difficulty tiers.
+2. **vs Friends:** Practice against friends by  creating custom room.
 
 ---
 
