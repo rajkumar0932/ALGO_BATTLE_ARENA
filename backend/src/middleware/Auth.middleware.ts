@@ -27,7 +27,7 @@ export const AuthMiddleware = asyncHandler(async (req: Request, res: Response, n
     FROM users
     WHERE id = $1
     `,
-            [(decodedToken as any)._id as number]
+            [(decodedToken as any).id as number]
         );
 
         const user = result.rows[0];
